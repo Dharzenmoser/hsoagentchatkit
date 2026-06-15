@@ -12,22 +12,20 @@ export function ChatKitPanel() {
     api: {
       getClientSecret
     },
-    composer: {
-      attachments: {
-        enabled: true,
-        accept: {
-          "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"],
-          "application/pdf": [".pdf"],
-          "text/plain": [".txt"],
-          "text/markdown": [".md"],
-          "application/msword": [".doc"],
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
-            ".docx",
-          ],
-        },
-        maxCount: 5,
-        maxSize: 20 * 1024 * 1024,
+    attachments: {
+      enabled: true,
+      accept: {
+        "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"],
+        "application/pdf": [".pdf"],
+        "text/plain": [".txt"],
+        "text/markdown": [".md"],
+        "application/msword": [".doc"],
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+          ".docx",
+        ],
       },
+      maxCount: 5,
+      maxSize: 20 * 1024 * 1024,
     },
   });
 
