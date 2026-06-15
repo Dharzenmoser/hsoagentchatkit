@@ -13,10 +13,6 @@ export function ChatKitPanel() {
       getClientSecret,
       uploadStrategy: { type: "two_phase" },
     },
-    startScreen: {
-             greeting: "Willkommen beim HSO Customer Service Agent",
-             }, 
-            
     composer: {
       attachments: {
         enabled: true,
