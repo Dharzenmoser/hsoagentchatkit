@@ -9,7 +9,27 @@ export function ChatKitPanel() {
   );
 
   const chatkit = useChatKit({
-    api: { getClientSecret },
+    api: {
+      getClientSecret,
+      uploadStrategy: { type: "two_phase" },
+    },
+    composer: {
+      attachments: {
+        enabled: true,
+        accept: {
+          "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"],
+          "application/pdf": [".pdf"],
+          "text/plain": [".txt"],
+          "text/markdown": [".md"],
+          "application/msword": [".doc"],
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+            ".docx",
+          ],
+        },
+        maxCount: 5,
+        maxSize: 20 * 1024 * 1024, // 20 MB
+      },
+    },
   });
 
   return (
