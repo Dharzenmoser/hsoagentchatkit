@@ -12,6 +12,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "Missing server configuration" });
   }
 
+  const client = new ChatKit({ domain: "harzi.app" });
+
   const { workflow } = req.body as { workflow: { id: string } };
 
   const response = await fetch("https://api.openai.com/v1/chatkit/sessions", {
