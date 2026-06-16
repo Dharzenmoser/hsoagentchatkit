@@ -9,9 +9,8 @@ export function ChatKitPanel() {
   );
 
   const chatkit = useChatKit({
-        api: {
+    api: {
       getClientSecret,
-      uploadStrategy: { type: "two_phase" },
     },
     composer: {
       attachments: {
