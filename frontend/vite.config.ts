@@ -16,6 +16,11 @@ export default defineConfig({
         target: apiTarget,
         changeOrigin: true,
       },
+      "/scripts/create-session": {
+        target: apiTarget,
+        changeOrigin: true,
+        rewrite: () => "/api/create-session",
+      },
     },
   },
 });
