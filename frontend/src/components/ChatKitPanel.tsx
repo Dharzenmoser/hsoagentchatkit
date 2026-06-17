@@ -13,33 +13,21 @@ function ConnectionBanner() {
 
     (async () => {
       try {
-        const res = await fetch("/api/create-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ workflow: { id: workflowId } }),
-        });
-
-        const payload = await res.json().catch(() => ({})) as {
-          client_secret?: string;
-          error?: string;
-        };
+        const res = await fetch("/health");
 
         if (cancelled) return;
 
-        if (!res.ok) {
-          setStatus("error");
-          setDetail(payload.error ?? `HTTP ${res.status}`);
-        } else if (!payload.client_secret) {
-          setStatus("error");
-          setDetail("Missing client_secret in response");
-        } else {
+        if (res.ok) {
           setStatus("ok");
-          setDetail("Backend & OpenAI erreichbar");
+          setDetail("Backend erreichbar");
+        } else {
+          setStatus("error");
+          setDetail(`HTTP ${res.status}`);
         }
       } catch (err) {
         if (!cancelled) {
           setStatus("error");
-          setDetail(err instanceof Error ? err.message : String(err));
+          setDetail(err instanceof Error ? err.message : "Keine Verbindung zum Backend");
         }
       }
     })();
