@@ -119,7 +119,7 @@ export function ChatKitPanel() {
   });
 
   return (
-    <div className="flex h-[90vh] w-full flex-col rounded-2xl bg-white shadow-sm dark:bg-slate-900">
+    <div className="flex min-h-0 flex-1 w-full flex-col rounded-2xl bg-white shadow-sm dark:bg-slate-900">
       <div className="px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800">
         <ConnectionBanner />
       </div>
