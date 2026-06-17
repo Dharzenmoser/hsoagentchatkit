@@ -7,6 +7,8 @@ type ConnectionStatus = "checking" | "ok" | "error";
 function ConnectionBanner() {
   const [status, setStatus] = useState<ConnectionStatus>("checking");
   const [detail, setDetail] = useState<string>("");
+  const [fading, setFading] = useState(false);
+  const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -14,7 +16,6 @@ function ConnectionBanner() {
     (async () => {
       try {
         const res = await fetch("/health");
-
         if (cancelled) return;
 
         if (res.ok) {
@@ -35,12 +36,21 @@ function ConnectionBanner() {
     return () => { cancelled = true; };
   }, []);
 
-  const base =
-    "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium";
+  useEffect(() => {
+    if (status !== "ok") return;
+    const fade = setTimeout(() => setFading(true), 2000);
+    const hide = setTimeout(() => setHidden(true), 2700);
+    return () => { clearTimeout(fade); clearTimeout(hide); };
+  }, [status]);
+
+  if (hidden) return null;
+
+  const base = "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-opacity duration-700";
+  const opacity = fading ? "opacity-0" : "opacity-100";
 
   if (status === "checking") {
     return (
-      <div className={`${base} bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400`}>
+      <div className={`${base} ${opacity} bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400`}>
         <span className="h-2 w-2 animate-pulse rounded-full bg-slate-400" />
         Verbindung wird geprüft…
       </div>
@@ -49,7 +59,7 @@ function ConnectionBanner() {
 
   if (status === "ok") {
     return (
-      <div className={`${base} bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400`}>
+      <div className={`${base} ${opacity} bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400`}>
         <span className="h-2 w-2 rounded-full bg-green-500" />
         Verbunden — {detail}
       </div>
@@ -57,7 +67,7 @@ function ConnectionBanner() {
   }
 
   return (
-    <div className={`${base} bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400`}>
+    <div className={`${base} ${opacity} bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400`}>
       <span className="h-2 w-2 rounded-full bg-red-500" />
       Verbindungsfehler: {detail}
     </div>
