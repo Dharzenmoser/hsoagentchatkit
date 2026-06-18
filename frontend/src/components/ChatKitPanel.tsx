@@ -121,7 +121,7 @@ export function ChatKitPanel() {
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  function handleKeyDown(e: { key: string; shiftKey: boolean; preventDefault: () => void }) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -133,7 +133,7 @@ export function ChatKitPanel() {
       <div className="px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800">
         <ConnectionBanner />
       </div>
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 chatkit-no-composer">
         <ErrorBoundary>
           <ChatKit control={chatkit.control} className="h-full w-full" />
         </ErrorBoundary>

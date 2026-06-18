@@ -32,3 +32,8 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+
+/* Hide the ChatKit built-in composer so only the custom input is used */
+.chatkit-no-composer openai-chatkit::part(composer) {
+  display: none;
+}
