@@ -10,8 +10,7 @@
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
-    "jsx": "react-jsx",
-    "types": ["react", "react-dom"]
+    "jsx": "react-jsx"
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
