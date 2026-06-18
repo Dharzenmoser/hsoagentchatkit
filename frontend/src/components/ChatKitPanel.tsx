@@ -201,9 +201,21 @@ export function ChatKitPanel() {
 
         {/* Error Banner */}
         {agentError && (
-          <div className="mx-4 mt-3 flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
-            <span className="mt-0.5 shrink-0">⚠</span>
-            <span>{agentError}</span>
+          <div className="mx-4 mt-3 flex flex-col gap-1.5 rounded-xl bg-red-50 px-4 py-3 text-sm dark:bg-red-900/20">
+            <div className="flex items-start gap-2 text-red-700 dark:text-red-400">
+              <span className="mt-0.5 shrink-0">⚠</span>
+              <span>{agentError}</span>
+            </div>
+            {agentError.toLowerCase().includes("domain") && (
+              <p className="pl-5 text-xs text-red-500 dark:text-red-500">
+                Hinweis: Füge <code className="rounded bg-red-100 px-1 dark:bg-red-900/40">localhost:3000</code> in den erlaubten Domains deines Workflows im OpenAI Agent Builder hinzu. Prüfe außerdem ob <code className="rounded bg-red-100 px-1 dark:bg-red-900/40">API_DOMAIN_KEY</code> korrekt gesetzt ist.
+              </p>
+            )}
+            {(agentError.includes("401") || agentError.toLowerCase().includes("unauthorized")) && !agentError.toLowerCase().includes("domain") && (
+              <p className="pl-5 text-xs text-red-500 dark:text-red-500">
+                Hinweis: Prüfe ob <code className="rounded bg-red-100 px-1 dark:bg-red-900/40">OPENAI_API_KEY</code> und <code className="rounded bg-red-100 px-1 dark:bg-red-900/40">VITE_CHATKIT_WORKFLOW_ID</code> korrekt gesetzt sind.
+              </p>
+            )}
           </div>
         )}
 

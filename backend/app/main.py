@@ -56,6 +56,8 @@ async def create_session(request: Request) -> JSONResponse:
     if domain_key:
         session_payload["domain_key"] = domain_key
 
+    print(f"[create-session] calling OpenAI — workflow={workflow_id} domain_key={'set' if domain_key else 'not set'}")
+
     try:
         async with httpx.AsyncClient(base_url=api_base, timeout=10.0) as client:
             upstream = await client.post(
@@ -75,11 +77,18 @@ async def create_session(request: Request) -> JSONResponse:
         )
 
     payload = parse_json(upstream)
+    print(f"[create-session] OpenAI responded — status={upstream.status_code} body={dict(payload)}")
+
     if not upstream.is_success:
         message = None
         if isinstance(payload, Mapping):
-            message = payload.get("error")
+            message = payload.get("error") or payload.get("message")
+            # Nested OpenAI error objects: {"error": {"message": "...", "type": "..."}}
+            raw_error = payload.get("error")
+            if isinstance(raw_error, Mapping):
+                message = raw_error.get("message") or str(raw_error)
         message = message or upstream.reason_phrase or "Failed to create session"
+        print(f"[create-session] error forwarded to client — {upstream.status_code}: {message}")
         return respond({"error": message}, upstream.status_code, cookie_value)
 
     client_secret = None
