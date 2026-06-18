@@ -96,6 +96,8 @@ function ConnectionBanner() {
 export function ChatKitPanel() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [isResponding, setIsResponding] = useState(false);
+  const [hasMessages, setHasMessages] = useState(false);
 
   const getClientSecret = useMemo(
     () => createClientSecretFetcher(workflowId),
@@ -104,8 +106,11 @@ export function ChatKitPanel() {
 
   const chatkit = useChatKit({
     api: { getClientSecret },
-    composer: {
-      attachments: { enabled: false },
+    composer: { attachments: { enabled: false } },
+    onResponseStart: () => setIsResponding(true),
+    onResponseEnd: () => {
+      setIsResponding(false);
+      setHasMessages(true);
     },
   });
 
@@ -115,7 +120,7 @@ export function ChatKitPanel() {
     setSending(true);
     setInput("");
     try {
-      await chatkit.sendUserMessage(text);
+      await chatkit.sendUserMessage({ text });
     } finally {
       setSending(false);
     }
@@ -129,33 +134,68 @@ export function ChatKitPanel() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 w-full flex-col rounded-2xl bg-white shadow-sm dark:bg-slate-900">
-      <div className="px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-        <ConnectionBanner />
+    <div className="flex min-h-0 flex-1 w-full gap-4">
+
+      {/* Left: Input Panel */}
+      <div className="flex w-80 shrink-0 flex-col gap-3">
+        <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900">
+          <ConnectionBanner />
+        </div>
+
+        <div className="flex flex-1 flex-col gap-3 rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            Nachricht senden
+          </p>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Frage oder Dokument eingeben…"
+            disabled={sending}
+            rows={6}
+            className="w-full flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || sending}
+            className="w-full rounded-xl bg-slate-800 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+          >
+            {sending ? "Wird gesendet…" : "Senden"}
+          </button>
+        </div>
       </div>
-      <div className="flex min-h-0 flex-1 chatkit-no-composer">
-        <ErrorBoundary>
-          <ChatKit control={chatkit.control} className="h-full w-full" />
-        </ErrorBoundary>
+
+      {/* Right: Answer Panel */}
+      <div className="flex min-h-0 flex-1 flex-col rounded-2xl bg-white shadow-sm dark:bg-slate-900">
+        <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-3 dark:border-slate-800">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            Agent Antwort
+          </span>
+          {isResponding && (
+            <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <span className="flex gap-0.5">
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:0ms]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:150ms]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:300ms]" />
+              </span>
+              Agent antwortet…
+            </span>
+          )}
+        </div>
+
+        {!hasMessages && !isResponding ? (
+          <div className="flex flex-1 items-center justify-center text-sm text-slate-400 dark:text-slate-500">
+            Sende eine Nachricht, um die Antwort des Agenten zu sehen.
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 chatkit-no-composer">
+            <ErrorBoundary>
+              <ChatKit control={chatkit.control} className="h-full w-full" />
+            </ErrorBoundary>
+          </div>
+        )}
       </div>
-      <div className="flex items-center gap-2 border-t border-slate-100 px-4 py-3 dark:border-slate-800">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Nachricht eingeben…"
-          disabled={sending}
-          className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-700"
-        />
-        <button
-          onClick={handleSend}
-          disabled={!input.trim() || sending}
-          className="rounded-xl bg-slate-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-        >
-          {sending ? "…" : "Senden"}
-        </button>
-      </div>
+
     </div>
   );
 }
