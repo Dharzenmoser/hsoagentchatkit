@@ -98,6 +98,7 @@ export function ChatKitPanel() {
   const [sending, setSending] = useState(false);
   const [isResponding, setIsResponding] = useState(false);
   const [hasMessages, setHasMessages] = useState(false);
+  const [agentError, setAgentError] = useState<string | null>(null);
 
   const getClientSecret = useMemo(
     () => createClientSecretFetcher(workflowId),
@@ -107,20 +108,31 @@ export function ChatKitPanel() {
   const chatkit = useChatKit({
     api: { getClientSecret },
     composer: { attachments: { enabled: false } },
-    onResponseStart: () => setIsResponding(true),
+    onResponseStart: () => {
+      setAgentError(null);
+      setIsResponding(true);
+    },
     onResponseEnd: () => {
       setIsResponding(false);
       setHasMessages(true);
+    },
+    onError: (detail) => {
+      setIsResponding(false);
+      setSending(false);
+      setAgentError(detail.error?.message ?? "Unbekannter Fehler vom Agenten");
     },
   });
 
   async function handleSend() {
     const text = input.trim();
     if (!text || sending) return;
+    setAgentError(null);
     setSending(true);
     setInput("");
     try {
       await chatkit.sendUserMessage({ text });
+    } catch (err) {
+      setAgentError(err instanceof Error ? err.message : "Nachricht konnte nicht gesendet werden");
     } finally {
       setSending(false);
     }
@@ -132,6 +144,8 @@ export function ChatKitPanel() {
       handleSend();
     }
   }
+
+  const showEmptyState = !hasMessages && !isResponding && !sending && !agentError;
 
   return (
     <div className="flex min-h-0 flex-1 w-full gap-4">
@@ -153,7 +167,7 @@ export function ChatKitPanel() {
             placeholder="Frage oder Dokument eingeben…"
             disabled={sending}
             rows={6}
-            className="w-full flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+            className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-700"
           />
           <button
             onClick={handleSend}
@@ -167,33 +181,49 @@ export function ChatKitPanel() {
 
       {/* Right: Answer Panel */}
       <div className="flex min-h-0 flex-1 flex-col rounded-2xl bg-white shadow-sm dark:bg-slate-900">
+
+        {/* Header */}
         <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-3 dark:border-slate-800">
           <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             Agent Antwort
           </span>
-          {isResponding && (
+          {(isResponding || sending) && (
             <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
               <span className="flex gap-0.5">
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:0ms]" />
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:150ms]" />
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:300ms]" />
               </span>
-              Agent antwortet…
+              {sending ? "Nachricht wird gesendet…" : "Agent antwortet…"}
             </span>
           )}
         </div>
 
-        {!hasMessages && !isResponding ? (
-          <div className="flex flex-1 items-center justify-center text-sm text-slate-400 dark:text-slate-500">
-            Sende eine Nachricht, um die Antwort des Agenten zu sehen.
+        {/* Error Banner */}
+        {agentError && (
+          <div className="mx-4 mt-3 flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+            <span className="mt-0.5 shrink-0">⚠</span>
+            <span>{agentError}</span>
           </div>
-        ) : (
+        )}
+
+        {/* ChatKit is always mounted so the session stays connected.
+            The empty-state overlay sits on top when there are no messages yet. */}
+        <div className="relative flex min-h-0 flex-1">
+          {showEmptyState && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-b-2xl bg-white dark:bg-slate-900">
+              <p className="text-sm text-slate-400 dark:text-slate-500">
+                Sende eine Nachricht, um die Antwort des Agenten zu sehen.
+              </p>
+            </div>
+          )}
           <div className="flex min-h-0 flex-1 chatkit-no-composer">
             <ErrorBoundary>
               <ChatKit control={chatkit.control} className="h-full w-full" />
             </ErrorBoundary>
           </div>
-        )}
+        </div>
+
       </div>
 
     </div>
