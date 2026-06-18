@@ -11,8 +11,8 @@
             "entrypoint": "app/main.py"
         }
     },
-    "routes": [
-        { "src": "/api/(.*)", "dest": "/_/backend/api/$1" },
-        { "src": "/health",   "dest": "/_/backend/health" }
+    "rewrites": [
+        { "source": "/api/:path*", "destination": "/_/backend/api/:path*" },
+        { "source": "/health",     "destination": "/_/backend/health" }
     ]
 }

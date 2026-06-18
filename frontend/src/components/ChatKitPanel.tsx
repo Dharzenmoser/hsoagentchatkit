@@ -1,7 +1,7 @@
 import { Component, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { ChatKit, useChatKit } from "@openai/chatkit-react";
-import { createClientSecretFetcher, workflowId } from "../lib/chatkitSession";
+import { createClientSecretFetcher, workflowId, apiBase } from "../lib/chatkitSession";
 
 // --- Error Boundary ---
 
@@ -46,7 +46,7 @@ function ConnectionBanner() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/health");
+        const res = await fetch(`${apiBase}/health`);
         if (cancelled) return;
         if (res.ok) {
           setStatus("ok");
