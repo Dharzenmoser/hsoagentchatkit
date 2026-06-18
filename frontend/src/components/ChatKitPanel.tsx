@@ -44,7 +44,7 @@ function ConnectionBanner() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         const res = await fetch(`${apiBase}/health`);
         if (cancelled) return;
@@ -141,7 +141,7 @@ export function ChatKitPanel() {
   function handleKeyDown(e: { key: string; shiftKey: boolean; preventDefault: () => void }) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      void handleSend();
     }
   }
 
@@ -170,7 +170,9 @@ export function ChatKitPanel() {
             className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-700"
           />
           <button
-            onClick={handleSend}
+            onClick={() => {
+              void handleSend();
+            }}
             disabled={!input.trim() || sending}
             className="w-full rounded-xl bg-slate-800 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
           >
@@ -208,7 +210,7 @@ export function ChatKitPanel() {
             </div>
             {agentError.toLowerCase().includes("domain") && (
               <p className="pl-5 text-xs text-red-500 dark:text-red-500">
-                Hinweis: Füge <code className="rounded bg-red-100 px-1 dark:bg-red-900/40">localhost:3000</code> in den erlaubten Domains deines Workflows im OpenAI Agent Builder hinzu. Prüfe außerdem ob <code className="rounded bg-red-100 px-1 dark:bg-red-900/40">API_DOMAIN_KEY</code> korrekt gesetzt ist.
+                Hinweis: Füge die aktuelle App-Domain in den erlaubten Domains deines Workflows im OpenAI Agent Builder hinzu.
               </p>
             )}
             {(agentError.includes("401") || agentError.toLowerCase().includes("unauthorized")) && !agentError.toLowerCase().includes("domain") && (

@@ -23,11 +23,16 @@ What happens:
 - `OPENAI_API_KEY`
 - `VITE_CHATKIT_WORKFLOW_ID`
 - (optional) `CHATKIT_API_BASE` or `VITE_CHATKIT_API_BASE` (defaults to `https://api.openai.com`)
-- (optional) `VITE_API_URL` (override the dev proxy target for `/api`)
+- (optional) `VITE_API_BASE` (browser-facing backend base URL; leave empty for same-origin `/api`)
+- (optional) `VITE_API_URL` (legacy alias for `VITE_API_BASE`; also used by Vite to override the dev proxy target)
 
 Set the env vars in your shell (or process manager) before running. Use a
 workflow id from Agent Builder (starts with `wf_...`) and an API key from the
 same project and organization.
+
+Do not send `API_DOMAIN_KEY` to the hosted ChatKit session endpoint. Domain
+allow-listing is configured in Agent Builder; the session request only needs
+your API key, workflow id, and app user id.
 
 ## Customize
 

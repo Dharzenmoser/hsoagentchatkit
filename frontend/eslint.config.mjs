@@ -4,7 +4,9 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
-import { URL } from "node:url";
+import { URL, fileURLToPath } from "node:url";
+
+const tsconfigRootDir = fileURLToPath(new URL(".", import.meta.url));
 
 export default [
   {
@@ -17,7 +19,7 @@ export default [
       parser: tsParser,
       parserOptions: {
         project: ["./tsconfig.json"],
-        tsconfigRootDir: new URL(".", import.meta.url).pathname,
+        tsconfigRootDir,
         ecmaFeatures: { jsx: true },
       },
       globals: { ...globals.browser, ...globals.node },
@@ -42,7 +44,7 @@ export default [
       parser: tsParser,
       parserOptions: {
         project: ["./tsconfig.node.json"],
-        tsconfigRootDir: new URL(".", import.meta.url).pathname,
+        tsconfigRootDir,
       },
       globals: { ...globals.node },
     },

@@ -42,12 +42,10 @@ async def create_session(request: Request) -> JSONResponse:
     if not api_key:
         return respond({"error": "Missing OPENAI_API_KEY environment variable"}, 500)
 
-    domain_key = os.getenv("API_DOMAIN_KEY")
-
     body = await read_json_body(request)
-    # Env var takes precedence — protects against build-time placeholders
-    # (e.g. REPLACE_ME_WORKFLOW_ID from Docker builds) reaching the backend.
-    env_workflow_id = os.getenv("CHATKIT_WORKFLOW_ID") or os.getenv("VITE_CHATKIT_WORKFLOW_ID")
+    # Prefer server-side configuration, but ignore frontend build placeholders
+    # that can exist in Docker/Vercel environments.
+    env_workflow_id = resolve_env_workflow_id()
     body_workflow_id = resolve_workflow_id(body)
     workflow_id = env_workflow_id or body_workflow_id
     if not workflow_id:
@@ -60,15 +58,20 @@ async def create_session(request: Request) -> JSONResponse:
                 "raw_body_keys": list(body.keys()),
             },
         }, 400)
+    if not is_valid_workflow_id(workflow_id):
+        return respond({
+            "error": "Invalid workflow id — use a ChatKit workflow id that starts with wf_",
+            "debug": {
+                "workflow_id_source": "environment" if env_workflow_id else "request body",
+            },
+        }, 400)
 
     user_id, cookie_value = resolve_user(request.cookies)
     api_base = chatkit_api_base()
 
     session_payload: dict = {"workflow": {"id": workflow_id}, "user": user_id}
-    if domain_key:
-        session_payload["domain_key"] = domain_key
 
-    print(f"[create-session] calling OpenAI — workflow={workflow_id} domain_key={'set' if domain_key else 'not set'}")
+    print(f"[create-session] calling OpenAI — workflow={workflow_id}")
 
     try:
         async with httpx.AsyncClient(base_url=api_base, timeout=10.0) as client:
@@ -161,10 +164,36 @@ def resolve_workflow_id(body: Mapping[str, Any]) -> str | None:
     workflow_id = None
     if isinstance(workflow, Mapping):
         workflow_id = workflow.get("id")
-    workflow_id = workflow_id or body.get("workflowId")
-    if workflow_id and isinstance(workflow_id, str) and workflow_id.strip():
-        return workflow_id.strip()
+    workflow_id = workflow_id or body.get("workflowId") or body.get("workflow_id")
+    return normalize_workflow_id(workflow_id)
+
+
+def resolve_env_workflow_id() -> str | None:
+    for key in ("CHATKIT_WORKFLOW_ID", "VITE_CHATKIT_WORKFLOW_ID"):
+        workflow_id = normalize_workflow_id(os.getenv(key))
+        if workflow_id:
+            return workflow_id
     return None
+
+
+def normalize_workflow_id(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    workflow_id = value.strip()
+    if not workflow_id or is_placeholder_workflow_id(workflow_id):
+        return None
+    return workflow_id
+
+
+def is_placeholder_workflow_id(workflow_id: str) -> bool:
+    normalized = workflow_id.lower()
+    return normalized in {"replace_me_workflow_id", "replace_me"} or normalized.startswith(
+        "wf_replace"
+    )
+
+
+def is_valid_workflow_id(workflow_id: str) -> bool:
+    return workflow_id.startswith("wf_")
 
 
 def resolve_user(cookies: Mapping[str, str]) -> tuple[str, str | None]:
