@@ -43,8 +43,6 @@ async def create_session(request: Request) -> JSONResponse:
         return respond({"error": "Missing OPENAI_API_KEY environment variable"}, 500)
 
     domain_key = os.getenv("API_DOMAIN_KEY")
-    if not domain_key:
-        return respond({"error": "Missing API_DOMAIN_KEY environment variable"}, 500)
 
     body = await read_json_body(request)
     workflow_id = resolve_workflow_id(body)
@@ -53,6 +51,10 @@ async def create_session(request: Request) -> JSONResponse:
 
     user_id, cookie_value = resolve_user(request.cookies)
     api_base = chatkit_api_base()
+
+    session_payload: dict = {"workflow": {"id": workflow_id}, "user": user_id}
+    if domain_key:
+        session_payload["domain_key"] = domain_key
 
     try:
         async with httpx.AsyncClient(base_url=api_base, timeout=10.0) as client:
@@ -63,11 +65,7 @@ async def create_session(request: Request) -> JSONResponse:
                     "OpenAI-Beta": "chatkit_beta=v1",
                     "Content-Type": "application/json",
                 },
-                json={
-                    "domain_key": domain_key,
-                    "workflow": {"id": workflow_id},
-                    "user": user_id,
-                },
+                json=session_payload,
             )
     except httpx.RequestError as error:
         return respond(
