@@ -94,6 +94,9 @@ function ConnectionBanner() {
 // --- Main Panel ---
 
 export function ChatKitPanel() {
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+
   const getClientSecret = useMemo(
     () => createClientSecretFetcher(workflowId),
     []
@@ -106,6 +109,25 @@ export function ChatKitPanel() {
     },
   });
 
+  async function handleSend() {
+    const text = input.trim();
+    if (!text || sending) return;
+    setSending(true);
+    setInput("");
+    try {
+      await chatkit.sendUserMessage(text);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
   return (
     <div className="flex min-h-0 flex-1 w-full flex-col rounded-2xl bg-white shadow-sm dark:bg-slate-900">
       <div className="px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800">
@@ -115,6 +137,24 @@ export function ChatKitPanel() {
         <ErrorBoundary>
           <ChatKit control={chatkit.control} className="h-full w-full" />
         </ErrorBoundary>
+      </div>
+      <div className="flex items-center gap-2 border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Nachricht eingeben…"
+          disabled={sending}
+          className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!input.trim() || sending}
+          className="rounded-xl bg-slate-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+        >
+          {sending ? "…" : "Senden"}
+        </button>
       </div>
     </div>
   );
