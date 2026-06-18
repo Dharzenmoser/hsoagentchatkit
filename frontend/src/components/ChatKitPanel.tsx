@@ -52,14 +52,8 @@ function ConnectionBanner() {
 }
 
 export function ChatKitPanel() {
-  const getClientSecret = useMemo(
-    () => createClientSecretFetcher(workflowId),
-    []
-  );
-
-  const chatkit = useChatKit({
-    api: { getClientSecret },
-  });
+  const getClientSecret = useMemo(() => createClientSecretFetcher(workflowId), []);
+  const chatkit = useChatKit({ api: { getClientSecret } });
 
   return (
     <div className="flex min-h-0 flex-1 w-full flex-col rounded-2xl bg-white shadow-sm dark:bg-slate-900 overflow-hidden">
