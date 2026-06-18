@@ -3,21 +3,49 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 import os
 import uuid
 from typing import Any, Mapping
 
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from fastapi.staticfiles import StaticFiles
-import os
 
 DEFAULT_CHATKIT_BASE = "https://api.openai.com"
 SESSION_COOKIE_NAME = "chatkit_session_id"
 SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30  # 30 days
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+DEFAULT_UPLOAD_MIME_TYPE = "application/octet-stream"
+ALLOWED_DOCUMENT_EXTENSIONS = {
+    ".csv",
+    ".doc",
+    ".docx",
+    ".json",
+    ".md",
+    ".pdf",
+    ".ppt",
+    ".pptx",
+    ".txt",
+    ".xls",
+    ".xlsx",
+}
+ALLOWED_DOCUMENT_MIME_TYPES = {
+    "application/json",
+    "application/msword",
+    "application/pdf",
+    "application/vnd.ms-excel",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/csv",
+    "text/markdown",
+    "text/plain",
+}
 
 app = FastAPI(title="Managed ChatKit Session API")
 
@@ -126,6 +154,63 @@ async def create_session(request: Request) -> JSONResponse:
     )
 
 
+@app.post("/api/upload-file")
+async def upload_file(file: UploadFile = File(...)) -> JSONResponse:
+    """Upload a user document to OpenAI Files for ChatKit attachments."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return respond({"error": "Missing OPENAI_API_KEY environment variable"}, 500)
+
+    filename = safe_upload_filename(file.filename)
+    mime_type = resolve_upload_mime_type(file.content_type, filename)
+    if not is_allowed_document_upload(filename, mime_type):
+        return respond(
+            {
+                "error": "Unsupported document type. Upload PDF, Word, Excel, PowerPoint, text, Markdown, CSV, or JSON files.",
+            },
+            400,
+        )
+
+    content = await file.read(MAX_UPLOAD_BYTES + 1)
+    if not content:
+        return respond({"error": "Uploaded document is empty"}, 400)
+    if len(content) > MAX_UPLOAD_BYTES:
+        return respond({"error": "Uploaded document is larger than 25 MB"}, 400)
+
+    api_base = chatkit_api_base()
+    try:
+        async with httpx.AsyncClient(base_url=api_base, timeout=30.0) as client:
+            upstream = await client.post(
+                "/v1/files",
+                headers={"Authorization": f"Bearer {api_key}"},
+                data={"purpose": "user_data"},
+                files={"file": (filename, content, mime_type)},
+            )
+    except httpx.RequestError as error:
+        return respond({"error": f"Failed to upload document: {error}"}, 502)
+
+    payload = parse_json(upstream)
+    if not upstream.is_success:
+        return respond(
+            {"error": upstream_error_message(payload, upstream.reason_phrase)},
+            upstream.status_code,
+        )
+
+    file_id = payload.get("id") if isinstance(payload, Mapping) else None
+    if not isinstance(file_id, str) or not file_id:
+        return respond({"error": "Missing file id in upload response"}, 502)
+
+    return respond(
+        {
+            "type": "file",
+            "id": file_id,
+            "name": filename,
+            "mime_type": mime_type,
+        },
+        200,
+    )
+
+
 def respond(
     payload: Mapping[str, Any], status_code: int, cookie_value: str | None = None
 ) -> JSONResponse:
@@ -194,6 +279,42 @@ def is_placeholder_workflow_id(workflow_id: str) -> bool:
 
 def is_valid_workflow_id(workflow_id: str) -> bool:
     return workflow_id.startswith("wf_")
+
+
+def safe_upload_filename(filename: str | None) -> str:
+    if not filename:
+        return "document"
+    normalized = filename.replace("\\", "/").split("/")[-1].strip()
+    return normalized.replace("\x00", "") or "document"
+
+
+def resolve_upload_mime_type(content_type: str | None, filename: str) -> str:
+    if content_type:
+        return content_type.split(";", 1)[0].strip().lower()
+    guessed_type = mimetypes.guess_type(filename)[0]
+    return guessed_type or DEFAULT_UPLOAD_MIME_TYPE
+
+
+def is_allowed_document_upload(filename: str, mime_type: str) -> bool:
+    extension = os.path.splitext(filename.lower())[1]
+    return (
+        mime_type in ALLOWED_DOCUMENT_MIME_TYPES
+        or extension in ALLOWED_DOCUMENT_EXTENSIONS
+    )
+
+
+def upstream_error_message(payload: Mapping[str, Any], fallback: str | None) -> str:
+    raw_error = payload.get("error") if isinstance(payload, Mapping) else None
+    if isinstance(raw_error, Mapping):
+        message = raw_error.get("message")
+        if isinstance(message, str) and message:
+            return message
+    if isinstance(raw_error, str) and raw_error:
+        return raw_error
+    message = payload.get("message") if isinstance(payload, Mapping) else None
+    if isinstance(message, str) and message:
+        return message
+    return fallback or "OpenAI upload failed"
 
 
 def resolve_user(cookies: Mapping[str, str]) -> tuple[str, str | None]:
