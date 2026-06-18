@@ -45,9 +45,12 @@ async def create_session(request: Request) -> JSONResponse:
     domain_key = os.getenv("API_DOMAIN_KEY")
 
     body = await read_json_body(request)
-    workflow_id = resolve_workflow_id(body)
+    # Env var takes precedence — protects against build-time placeholders
+    # (e.g. REPLACE_ME_WORKFLOW_ID from Docker builds) reaching the backend.
+    env_workflow_id = os.getenv("CHATKIT_WORKFLOW_ID") or os.getenv("VITE_CHATKIT_WORKFLOW_ID")
+    workflow_id = env_workflow_id or resolve_workflow_id(body)
     if not workflow_id:
-        return respond({"error": "Missing workflow id"}, 400)
+        return respond({"error": "Missing workflow id — set CHATKIT_WORKFLOW_ID on the backend"}, 400)
 
     user_id, cookie_value = resolve_user(request.cookies)
     api_base = chatkit_api_base()
@@ -150,11 +153,6 @@ def resolve_workflow_id(body: Mapping[str, Any]) -> str | None:
     if isinstance(workflow, Mapping):
         workflow_id = workflow.get("id")
     workflow_id = workflow_id or body.get("workflowId")
-    env_workflow = os.getenv("CHATKIT_WORKFLOW_ID") or os.getenv(
-        "VITE_CHATKIT_WORKFLOW_ID"
-    )
-    if not workflow_id and env_workflow:
-        workflow_id = env_workflow
     if workflow_id and isinstance(workflow_id, str) and workflow_id.strip():
         return workflow_id.strip()
     return None
