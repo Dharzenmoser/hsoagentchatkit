@@ -289,9 +289,11 @@ def safe_upload_filename(filename: str | None) -> str:
 
 
 def resolve_upload_mime_type(content_type: str | None, filename: str) -> str:
-    if content_type:
-        return content_type.split(";", 1)[0].strip().lower()
     guessed_type = mimetypes.guess_type(filename)[0]
+    if content_type:
+        normalized = content_type.split(";", 1)[0].strip().lower()
+        if normalized and normalized != DEFAULT_UPLOAD_MIME_TYPE:
+            return normalized
     return guessed_type or DEFAULT_UPLOAD_MIME_TYPE
 
 

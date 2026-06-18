@@ -34,6 +34,14 @@ Do not send `API_DOMAIN_KEY` to the hosted ChatKit session endpoint. Domain
 allow-listing is configured in Agent Builder; the session request only needs
 your API key, workflow id, and app user id.
 
+## Document uploads
+
+The custom composer includes a paperclip upload button. Uploaded documents are
+proxied through `/api/upload-file`, stored with OpenAI Files using
+`purpose=user_data`, and then sent to ChatKit as message attachments. Supported
+formats are PDF, Word, Excel, PowerPoint, text, Markdown, CSV, and JSON up to
+25 MB per file.
+
 ## Customize
 
 - UI: `frontend/src/components/ChatKitPanel.tsx`

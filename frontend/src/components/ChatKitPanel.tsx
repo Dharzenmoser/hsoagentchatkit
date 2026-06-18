@@ -1,7 +1,31 @@
-import { Component, useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import { Component, useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent, ReactNode } from "react";
+import type { Attachment } from "@openai/chatkit";
 import { ChatKit, useChatKit } from "@openai/chatkit-react";
 import { createClientSecretFetcher, workflowId, apiBase } from "../lib/chatkitSession";
+
+const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
+const MAX_ATTACHMENTS = 5;
+const DOCUMENT_ACCEPT = {
+  "application/json": [".json"],
+  "application/msword": [".doc"],
+  "application/pdf": [".pdf"],
+  "application/vnd.ms-excel": [".xls"],
+  "application/vnd.ms-powerpoint": [".ppt"],
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+  "text/csv": [".csv"],
+  "text/markdown": [".md"],
+  "text/plain": [".txt"],
+} satisfies Record<string, string[]>;
+const DOCUMENT_ACCEPT_ATTRIBUTE = Object.entries(DOCUMENT_ACCEPT)
+  .flatMap(([mimeType, extensions]) => [mimeType, ...extensions])
+  .join(",");
+const DOCUMENT_MIME_TYPES = new Set(Object.keys(DOCUMENT_ACCEPT));
+const DOCUMENT_EXTENSIONS = new Set(Object.values(DOCUMENT_ACCEPT).flat());
+
+type UploadedDocument = Extract<Attachment, { type: "file" }>;
 
 // --- Error Boundary ---
 
@@ -91,14 +115,87 @@ function ConnectionBanner() {
   );
 }
 
+function PaperclipIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657L4.757 11.586a6 6 0 1 0 8.486 8.486L21 12.314" />
+    </svg>
+  );
+}
+
+function getFileExtension(filename: string) {
+  const index = filename.lastIndexOf(".");
+  return index >= 0 ? filename.slice(index).toLowerCase() : "";
+}
+
+function isAllowedDocument(file: File) {
+  return (
+    (file.type ? DOCUMENT_MIME_TYPES.has(file.type) : false) ||
+    DOCUMENT_EXTENSIONS.has(getFileExtension(file.name))
+  );
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  const kilobytes = bytes / 1024;
+  if (kilobytes < 1024) return `${kilobytes.toFixed(1)} KB`;
+  return `${(kilobytes / 1024).toFixed(1)} MB`;
+}
+
+async function uploadDocument(file: File): Promise<UploadedDocument> {
+  if (file.size > MAX_DOCUMENT_BYTES) {
+    throw new Error(`${file.name} ist groesser als 25 MB.`);
+  }
+  if (!isAllowedDocument(file)) {
+    throw new Error(`${file.name} wird nicht unterstuetzt.`);
+  }
+
+  const body = new FormData();
+  body.append("file", file);
+
+  const response = await fetch(`${apiBase}/api/upload-file`, {
+    method: "POST",
+    body,
+  });
+  const payload = (await response.json().catch(() => ({}))) as Partial<UploadedDocument> & {
+    error?: string;
+  };
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? `Upload fehlgeschlagen (HTTP ${response.status})`);
+  }
+  if (
+    payload.type !== "file" ||
+    typeof payload.id !== "string" ||
+    typeof payload.name !== "string" ||
+    typeof payload.mime_type !== "string"
+  ) {
+    throw new Error("Upload-Antwort enthaelt keinen gueltigen Dateianhang.");
+  }
+
+  return payload;
+}
+
 // --- Main Panel ---
 
 export function ChatKitPanel() {
   const [input, setInput] = useState("");
+  const [attachments, setAttachments] = useState<UploadedDocument[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [isResponding, setIsResponding] = useState(false);
   const [hasMessages, setHasMessages] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getClientSecret = useMemo(
     () => createClientSecretFetcher(workflowId),
@@ -107,7 +204,14 @@ export function ChatKitPanel() {
 
   const chatkit = useChatKit({
     api: { getClientSecret },
-    composer: { attachments: { enabled: false } },
+    composer: {
+      attachments: {
+        enabled: true,
+        accept: DOCUMENT_ACCEPT,
+        maxCount: MAX_ATTACHMENTS,
+        maxSize: MAX_DOCUMENT_BYTES,
+      },
+    },
     onResponseStart: () => {
       setAgentError(null);
       setIsResponding(true);
@@ -123,15 +227,46 @@ export function ChatKitPanel() {
     },
   });
 
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (!files.length) return;
+
+    if (attachments.length + files.length > MAX_ATTACHMENTS) {
+      setAgentError(`Maximal ${MAX_ATTACHMENTS} Dokumente pro Nachricht.`);
+      return;
+    }
+
+    setAgentError(null);
+    setUploading(true);
+    try {
+      const uploaded = await Promise.all(files.map(uploadDocument));
+      setAttachments((current) => [...current, ...uploaded]);
+    } catch (err) {
+      setAgentError(err instanceof Error ? err.message : "Dokument konnte nicht hochgeladen werden");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function removeAttachment(id: string) {
+    setAttachments((current) => current.filter((attachment) => attachment.id !== id));
+  }
+
   async function handleSend() {
     const text = input.trim();
-    if (!text || sending) return;
+    if ((!text && attachments.length === 0) || sending || uploading) return;
+    const attachmentsToSend = attachments;
+    const messageText = text || "Bitte analysiere die angehaengten Dokumente.";
     setAgentError(null);
     setSending(true);
     setInput("");
+    setAttachments([]);
     try {
-      await chatkit.sendUserMessage({ text });
+      await chatkit.sendUserMessage({ text: messageText, attachments: attachmentsToSend });
     } catch (err) {
+      setInput(text);
+      setAttachments(attachmentsToSend);
       setAgentError(err instanceof Error ? err.message : "Nachricht konnte nicht gesendet werden");
     } finally {
       setSending(false);
@@ -145,6 +280,7 @@ export function ChatKitPanel() {
     }
   }
 
+  const canSend = (Boolean(input.trim()) || attachments.length > 0) && !sending && !uploading;
   const showEmptyState = !hasMessages && !isResponding && !sending && !agentError;
 
   return (
@@ -160,6 +296,7 @@ export function ChatKitPanel() {
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
             Nachricht senden
           </p>
+          <div className="relative">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -167,13 +304,71 @@ export function ChatKitPanel() {
             placeholder="Frage oder Dokument eingeben…"
             disabled={sending}
             rows={6}
-            className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-700"
+            className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pr-14 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-700"
           />
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept={DOCUMENT_ACCEPT_ATTRIBUTE}
+              className="hidden"
+              onChange={(event) => {
+                void handleFileChange(event);
+              }}
+            />
+            <button
+              type="button"
+              title="Dokument anhaengen"
+              aria-label="Dokument anhaengen"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending || uploading || attachments.length >= MAX_ATTACHMENTS}
+              className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              {uploading ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700 dark:border-slate-600 dark:border-t-slate-100" />
+              ) : (
+                <PaperclipIcon />
+              )}
+            </button>
+          </div>
+
+          {(attachments.length > 0 || uploading) && (
+            <div className="flex flex-col gap-2">
+              {attachments.map((attachment) => (
+                <div
+                  key={attachment.id}
+                  className="flex min-h-9 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  <span className="min-w-0 flex-1 truncate">{attachment.name}</span>
+                  <span className="ml-auto shrink-0 text-slate-400">{attachment.mime_type}</span>
+                  <button
+                    type="button"
+                    className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 disabled:opacity-40 dark:hover:bg-slate-700 dark:hover:text-slate-100"
+                    aria-label={`${attachment.name} entfernen`}
+                    title="Entfernen"
+                    onClick={() => removeAttachment(attachment.id)}
+                    disabled={sending}
+                  >
+                    x
+                  </button>
+                </div>
+              ))}
+              {uploading && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Dokument wird hochgeladen...
+                </p>
+              )}
+            </div>
+          )}
+
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            PDF, Word, Excel, PowerPoint, Text, Markdown, CSV oder JSON bis {formatBytes(MAX_DOCUMENT_BYTES)}.
+          </p>
           <button
             onClick={() => {
               void handleSend();
             }}
-            disabled={!input.trim() || sending}
+            disabled={!canSend}
             className="w-full rounded-xl bg-slate-800 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
           >
             {sending ? "Wird gesendet…" : "Senden"}
