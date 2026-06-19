@@ -195,6 +195,7 @@ export function ChatKitPanel() {
   const [sending, setSending] = useState(false);
   const [isResponding, setIsResponding] = useState(false);
   const [hasMessages, setHasMessages] = useState(false);
+  const [messageSent, setMessageSent] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -261,6 +262,7 @@ export function ChatKitPanel() {
     const messageText = text || DEFAULT_INPUT_MESSAGE;
     setAgentError(null);
     setSending(true);
+    setMessageSent(true);
     setInput("");
     setAttachments([]);
     try {
@@ -292,7 +294,7 @@ export function ChatKitPanel() {
   }
 
   const canSend = (Boolean(input.trim()) || attachments.length > 0) && !sending && !uploading;
-  const showEmptyState = !hasMessages && !isResponding && !agentError;
+  const showEmptyState = !messageSent && !agentError;
 
   return (
     <div className="flex min-h-0 flex-1 w-full gap-4">
@@ -432,7 +434,7 @@ export function ChatKitPanel() {
           {showEmptyState && (
             <div className="absolute inset-0 z-10 flex items-center justify-center rounded-b-2xl bg-white dark:bg-slate-900">
               <p className="text-sm text-slate-400 dark:text-slate-500">
-                {sending ? "Nachricht wird gesendet…" : "Sende eine Nachricht, um die Antwort des Agenten zu sehen."}
+                Sende eine Nachricht, um die Antwort des Agenten zu sehen.
               </p>
             </div>
           )}
