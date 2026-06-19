@@ -5,6 +5,11 @@ workflow sessions.
 
 ## Quick start
 
+Prerequisites:
+
+- Node.js 20.19 or newer
+- npm 9 or newer
+
 ```bash
 npm install           # installs root deps (concurrently)
 npm run dev           # runs FastAPI on :8000 and Vite on :3000

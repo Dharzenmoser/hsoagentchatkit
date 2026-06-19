@@ -5,6 +5,7 @@ import { createClientSecretFetcher, workflowId, apiBase } from "../lib/chatkitSe
 
 const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
 const MAX_ATTACHMENTS = 5;
+const DOCUMENT_UPLOAD_URL = `${apiBase}/api/upload-file`;
 const DOCUMENT_ACCEPT = {
   "application/json": [".json"],
   "application/msword": [".doc"],
@@ -123,7 +124,10 @@ export function ChatKitPanel() {
   );
 
   const chatkit = useChatKit({
-    api: { getClientSecret },
+    api: {
+      getClientSecret,
+      uploadStrategy: { type: "direct", uploadUrl: DOCUMENT_UPLOAD_URL },
+    },
     composer: {
       attachments: {
         enabled: true,
