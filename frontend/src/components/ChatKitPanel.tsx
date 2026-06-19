@@ -1,5 +1,5 @@
 import { Component, useEffect, useMemo, useRef, useState } from "react";
-import type { ChangeEvent, ReactNode } from "react";
+import type { ChangeEvent, MouseEvent, ReactNode } from "react";
 import type { Attachment } from "@openai/chatkit";
 import { ChatKit, useChatKit } from "@openai/chatkit-react";
 import { createClientSecretFetcher, workflowId, apiBase } from "../lib/chatkitSession";
@@ -285,6 +285,12 @@ export function ChatKitPanel() {
     }
   }
 
+  function handleSendClick(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    void handleSend();
+  }
+
   const canSend = (Boolean(input.trim()) || attachments.length > 0) && !sending && !uploading;
   const showEmptyState = !hasMessages && !isResponding && !sending && !agentError;
 
@@ -370,9 +376,8 @@ export function ChatKitPanel() {
             PDF, Word, Excel, PowerPoint, Text, Markdown, CSV oder JSON bis {formatBytes(MAX_DOCUMENT_BYTES)}.
           </p>
           <button
-            onClick={() => {
-              void handleSend();
-            }}
+            type="button"
+            onClick={handleSendClick}
             disabled={!canSend}
             className="w-full rounded-xl bg-slate-800 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
           >
