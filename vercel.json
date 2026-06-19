@@ -12,7 +12,6 @@
         }
     },
     "rewrites": [
-        { "source": "/chatkit.js", "destination": "/_/backend/chatkit.js" },
         { "source": "/api/:path*", "destination": "/_/backend/api/:path*" },
         { "source": "/health",     "destination": "/_/backend/health" }
     ]

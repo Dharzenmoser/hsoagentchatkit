@@ -21,8 +21,7 @@ What happens:
 ## Required environment
 
 - `OPENAI_API_KEY`
-- `CHATKIT_WORKFLOW_ID` (recommended for deployments)
-- `VITE_CHATKIT_WORKFLOW_ID` (optional local fallback when the backend is not configured)
+- `VITE_CHATKIT_WORKFLOW_ID`
 - (optional) `CHATKIT_API_BASE` or `VITE_CHATKIT_API_BASE` (defaults to `https://api.openai.com`)
 - (optional) `VITE_API_BASE` (browser-facing backend base URL; leave empty for same-origin `/api`)
 - (optional) `VITE_API_URL` (legacy alias for `VITE_API_BASE`; also used by Vite to override the dev proxy target)
@@ -30,10 +29,6 @@ What happens:
 Set the env vars in your shell (or process manager) before running. Use a
 workflow id from Agent Builder (starts with `wf_...`) and an API key from the
 same project and organization.
-
-The ChatKit browser script is served from `/chatkit.js` through the backend.
-This keeps the browser on the app's own origin and avoids direct CDN HTTP/2
-load failures such as `net::ERR_HTTP2_PROTOCOL_ERROR 200 (OK)`.
 
 Do not send `API_DOMAIN_KEY` to the hosted ChatKit session endpoint. Domain
 allow-listing is configured in Agent Builder; the session request only needs

@@ -10,7 +10,7 @@
     "lint": "eslint . --ext ts,tsx --max-warnings=0"
   },
   "engines": {
-    "node": ">=20.19",
+    "node": ">=18.18",
     "npm": ">=9"
   },
   "dependencies": {
