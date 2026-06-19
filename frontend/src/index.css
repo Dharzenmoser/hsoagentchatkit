@@ -33,10 +33,4 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Hide the ChatKit built-in composer so only the custom input is used */
-.chatkit-no-composer openai-chatkit::part(composer) {
-  display: none !important;
-}
-.chatkit-no-composer openai-chatkit::part(chatkit-composer) {
-  display: none !important;
-}
+/* openai-chatkit renders via an iframe — external CSS cannot reach inside it */

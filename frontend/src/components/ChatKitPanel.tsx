@@ -217,6 +217,7 @@ export function ChatKitPanel() {
     onResponseStart: () => {
       setAgentError(null);
       setIsResponding(true);
+      setHasMessages(true);
     },
     onResponseEnd: () => {
       setIsResponding(false);
@@ -294,7 +295,7 @@ export function ChatKitPanel() {
   }
 
   const canSend = (Boolean(input.trim()) || attachments.length > 0) && !sending && !uploading;
-  const showEmptyState = !messageSent && !agentError;
+  const showEmptyState = !hasMessages && !isResponding && !agentError;
 
   return (
     <div className="flex min-h-0 flex-1 w-full gap-4">
@@ -434,7 +435,7 @@ export function ChatKitPanel() {
           {showEmptyState && (
             <div className="absolute inset-0 z-10 flex items-center justify-center rounded-b-2xl bg-white dark:bg-slate-900">
               <p className="text-sm text-slate-400 dark:text-slate-500">
-                Sende eine Nachricht, um die Antwort des Agenten zu sehen.
+                {messageSent ? "Agent wird befragt…" : "Sende eine Nachricht, um die Antwort des Agenten zu sehen."}
               </p>
             </div>
           )}
