@@ -1,11 +1,10 @@
 import { Component, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { ChatKit, useChatKit } from "@openai/chatkit-react";
+import { ChatKit, useChatKit, type HostedApiConfig } from "@openai/chatkit-react";
 import { createClientSecretFetcher, workflowId, apiBase } from "../lib/chatkitSession";
 
 const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
 const MAX_ATTACHMENTS = 5;
-const DOCUMENT_UPLOAD_URL = `${apiBase}/api/upload-file`;
 const DOCUMENT_ACCEPT = {
   "application/json": [".json"],
   "application/msword": [".doc"],
@@ -124,10 +123,9 @@ export function ChatKitPanel() {
   );
 
   const chatkit = useChatKit({
-    api: {
+    api: ({
       getClientSecret,
-      uploadStrategy: { type: "direct", uploadUrl: DOCUMENT_UPLOAD_URL },
-    },
+    } satisfies HostedApiConfig),
     composer: {
       attachments: {
         enabled: true,
