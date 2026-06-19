@@ -35,5 +35,8 @@ body {
 
 /* Hide the ChatKit built-in composer so only the custom input is used */
 .chatkit-no-composer openai-chatkit::part(composer) {
-  display: none;
+  display: none !important;
+}
+.chatkit-no-composer openai-chatkit::part(chatkit-composer) {
+  display: none !important;
 }
