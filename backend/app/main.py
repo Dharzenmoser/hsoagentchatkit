@@ -6,18 +6,20 @@ import json
 import mimetypes
 import os
 import uuid
+from pathlib import Path
 from typing import Any, Mapping
 
 import httpx
 from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 DEFAULT_CHATKIT_BASE = "https://api.openai.com"
+CHATKIT_WIDGET_SCRIPT_URL = "https://cdn.platform.openai.com/deployments/chatkit/chatkit.js"
 SESSION_COOKIE_NAME = "chatkit_session_id"
 SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30  # 30 days
+CHATKIT_WIDGET_CACHE_SECONDS = 60 * 60
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 DEFAULT_UPLOAD_MIME_TYPE = "application/octet-stream"
 ALLOWED_DOCUMENT_EXTENSIONS = {
@@ -61,6 +63,40 @@ app.add_middleware(
 @app.get("/health")
 async def health() -> Mapping[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/chatkit.js")
+async def chatkit_widget_script() -> Response:
+    """Serve the ChatKit widget same-origin to avoid browser/CDN HTTP/2 issues."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            upstream = await client.get(
+                CHATKIT_WIDGET_SCRIPT_URL,
+                headers={
+                    "Accept": "application/javascript,*/*;q=0.8",
+                    "Accept-Encoding": "identity",
+                },
+            )
+    except httpx.RequestError as error:
+        return javascript_error_response(
+            f"Failed to load ChatKit widget script: {error}",
+            502,
+        )
+
+    if not upstream.is_success:
+        return javascript_error_response(
+            f"Failed to load ChatKit widget script: HTTP {upstream.status_code}",
+            502,
+        )
+
+    return Response(
+        content=upstream.content,
+        media_type="application/javascript",
+        headers={
+            "Cache-Control": f"public, max-age={CHATKIT_WIDGET_CACHE_SECONDS}, no-transform",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @app.post("/api/create-session")
@@ -228,6 +264,16 @@ def respond(
     return response
 
 
+def javascript_error_response(message: str, status_code: int) -> Response:
+    escaped = json.dumps(message)
+    return Response(
+        content=f"console.error({escaped});",
+        status_code=status_code,
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 def is_prod() -> bool:
     env = (os.getenv("ENVIRONMENT") or os.getenv("NODE_ENV") or "").lower()
     return env == "production"
@@ -342,13 +388,29 @@ def parse_json(response: httpx.Response) -> Mapping[str, Any]:
     except (json.JSONDecodeError, httpx.DecodingError):
         return {}
 
-# --- FIX FÜR DOCKER DEPLOYMENT ---
-# Prüfen, ob der Frontend-Ordner im Container existiert
-# (Wir haben ihn im Dockerfile nach /app/frontend/dist kopiert)
-frontend_path = "/app/frontend/dist"
 
-if os.path.exists(frontend_path):
-    # API-Routen haben Vorrang, der Rest geht ans Frontend
-    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
+def resolve_frontend_dist() -> Path | None:
+    candidates: list[Path] = []
+    configured_path = os.getenv("FRONTEND_DIST_DIR")
+    if configured_path:
+        candidates.append(Path(configured_path))
+    candidates.extend(
+        (
+            Path("/app/frontend/dist"),
+            Path(__file__).resolve().parents[2] / "frontend" / "dist",
+        )
+    )
+
+    for candidate in candidates:
+        frontend_path = candidate.expanduser().resolve()
+        if (frontend_path / "index.html").is_file():
+            return frontend_path
+    return None
+
+
+frontend_path = resolve_frontend_dist()
+
+if frontend_path:
+    app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
 else:
-    print(f"WARNUNG: Frontend Pfad {frontend_path} nicht gefunden!")
+    print("WARNING: Frontend dist directory not found; running API-only.")

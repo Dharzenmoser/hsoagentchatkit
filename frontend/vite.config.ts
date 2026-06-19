@@ -2,7 +2,22 @@ import path from "node:path";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vite";
 
-const apiTarget = process.env.VITE_API_URL ?? "http://127.0.0.1:8000";
+const readApiTarget = () => {
+  const value = (process.env.VITE_API_BASE ?? process.env.VITE_API_URL)?.trim();
+  const normalized = value?.toLowerCase();
+  if (
+    !value ||
+    !normalized ||
+    value.startsWith("/") ||
+    normalized === "replace_me" ||
+    normalized.startsWith("replace_me_")
+  ) {
+    return "http://127.0.0.1:8000";
+  }
+  return value;
+};
+
+const apiTarget = readApiTarget();
 
 export default defineConfig({
   // Allow env files to live one level above the frontend directory
@@ -17,6 +32,10 @@ export default defineConfig({
         changeOrigin: true,
       },
       "/health": {
+        target: apiTarget,
+        changeOrigin: true,
+      },
+      "/chatkit.js": {
         target: apiTarget,
         changeOrigin: true,
       },
