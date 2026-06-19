@@ -39,7 +39,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   res.setHeader("Set-Cookie", `chatkit_session_id=${user}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`);
-  return res.status(200).json({ client_secret: data.client_secret });
+  return res.status(200).json({
+    client_secret: data.client_secret,
+    workflow_id: workflowId,
+  });
 }
 
 function resolveWorkflowId(body: unknown): string | undefined {

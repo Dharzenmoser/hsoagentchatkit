@@ -218,7 +218,11 @@ async def create_session(request: Request) -> JSONResponse:
         )
 
     return respond(
-        {"client_secret": client_secret, "expires_after": expires_after},
+        {
+            "client_secret": client_secret,
+            "expires_after": expires_after,
+            "workflow_id": workflow_id,
+        },
         200,
         cookie_value,
     )
