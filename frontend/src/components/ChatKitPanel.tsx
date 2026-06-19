@@ -6,6 +6,7 @@ import { createClientSecretFetcher, workflowId, apiBase } from "../lib/chatkitSe
 
 const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
 const MAX_ATTACHMENTS = 5;
+const DEFAULT_INPUT_MESSAGE = "Bitte analysiere diese Dokumente";
 const DOCUMENT_ACCEPT = {
   "application/json": [".json"],
   "application/msword": [".doc"],
@@ -188,7 +189,7 @@ async function uploadDocument(file: File): Promise<UploadedDocument> {
 // --- Main Panel ---
 
 export function ChatKitPanel() {
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(DEFAULT_INPUT_MESSAGE);
   const [attachments, setAttachments] = useState<UploadedDocument[]>([]);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -257,7 +258,7 @@ export function ChatKitPanel() {
     const text = input.trim();
     if ((!text && attachments.length === 0) || sending || uploading) return;
     const attachmentsToSend = attachments;
-    const messageText = text || "Bitte analysiere die angehaengten Dokumente.";
+    const messageText = text || DEFAULT_INPUT_MESSAGE;
     setAgentError(null);
     setSending(true);
     setInput("");
