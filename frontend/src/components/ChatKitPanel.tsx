@@ -263,7 +263,11 @@ export function ChatKitPanel() {
     setInput("");
     setAttachments([]);
     try {
-      await chatkit.sendUserMessage({ text: messageText, attachments: attachmentsToSend });
+      if (attachmentsToSend.length > 0) {
+        await chatkit.sendUserMessage({ text: messageText, attachments: attachmentsToSend });
+      } else {
+        await chatkit.sendUserMessage({ text: messageText });
+      }
     } catch (err) {
       setInput(text);
       setAttachments(attachmentsToSend);
