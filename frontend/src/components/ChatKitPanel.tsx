@@ -57,6 +57,7 @@ type ConnectionStatus = "checking" | "ok" | "error";
 function ConnectionBanner() {
   const [status, setStatus] = useState<ConnectionStatus>("checking");
   const [detail, setDetail] = useState("");
+  const [agentName, setAgentName] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,8 +66,12 @@ function ConnectionBanner() {
         const res = await fetch(`${apiBase}/health`);
         if (cancelled) return;
         if (res.ok) {
-          setStatus("ok");
-          setDetail("Backend erreichbar");
+          const body = await res.json().catch(() => ({})) as { agent_name?: string };
+          if (!cancelled) {
+            setStatus("ok");
+            setAgentName(body.agent_name ?? null);
+            setDetail("Backend erreichbar");
+          }
         } else {
           setStatus("error");
           setDetail(`HTTP ${res.status}`);
@@ -95,7 +100,7 @@ function ConnectionBanner() {
 
   const label: Record<ConnectionStatus, string> = {
     checking: "Verbindung wird geprüft…",
-    ok:       `Verbunden — ${detail}`,
+    ok:       agentName ? `Verbunden — ${agentName}` : "Verbunden",
     error:    `Verbindungsfehler: ${detail}`,
   };
 

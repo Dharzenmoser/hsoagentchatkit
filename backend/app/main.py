@@ -61,8 +61,42 @@ app.add_middleware(
 
 
 @app.get("/health")
-async def health() -> Mapping[str, str]:
-    return {"status": "ok"}
+async def health() -> JSONResponse:
+    agent_name = await _resolve_agent_name()
+    return JSONResponse({"status": "ok", "agent_name": agent_name})
+
+
+async def _resolve_agent_name() -> str | None:
+    configured = os.getenv("CHATKIT_AGENT_NAME")
+    if configured:
+        return configured.strip()
+
+    workflow_id = resolve_env_workflow_id()
+    if not workflow_id:
+        return None
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return workflow_id
+
+    try:
+        async with httpx.AsyncClient(base_url=chatkit_api_base(), timeout=3.0) as client:
+            resp = await client.get(
+                f"/v1/chatkit/workflows/{workflow_id}",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "OpenAI-Beta": "chatkit_beta=v1",
+                },
+            )
+            if resp.is_success:
+                data = parse_json(resp)
+                name = data.get("name") or data.get("display_name")
+                if isinstance(name, str) and name:
+                    return name
+    except Exception:
+        pass
+
+    return workflow_id
 
 
 @app.get("/chatkit.js")
