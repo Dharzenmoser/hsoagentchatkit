@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="d4bc900d-5746-40be-8135-1a0933e67bca" name="Changes" comment="retry" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="31" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RESET_MODE" value="HARD" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "Dharzenmoser"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Dharzenmoser/hsoagentchatkit.git",
+    "accountId": "40bc3fb6-91df-41b0-ae07-05631327a9d3"
+  }
+}]]></component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="1.3492976199224365" />
+      <entry key="MS500" value="3.355645529061811" />
+      <entry key="S2" value="7.676977117164935" />
+      <entry key="S5" value="15.455265335590376" />
+      <entry key="S10" value="22.961529823632386" />
+      <entry key="S30" value="31.742228076407823" />
+      <entry key="S60" value="34.770044972567376" />
+      <entry key="M2" value="36.59721052185689" />
+      <entry key="M5" value="37.92921503277006" />
+      <entry key="M10" value="38.44095017772236" />
+      <entry key="M15" value="38.621539137809215" />
+      <entry key="M30" value="38.807750691966895" />
+      <entry key="H1" value="38.90309341155425" />
+      <entry key="H2" value="38.951347704562856" />
+      <entry key="H4" value="38.97562365483376" />
+      <entry key="D1" value="38.99593026563464" />
+      <entry key="W1" value="38.99941843719688" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="0.0" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="0.0" />
+      <entry key="S10" value="0.0" />
+      <entry key="S30" value="0.0" />
+      <entry key="S60" value="0.0" />
+      <entry key="M2" value="0.0" />
+      <entry key="M5" value="0.0" />
+      <entry key="M10" value="0.0" />
+      <entry key="M15" value="0.0" />
+      <entry key="M30" value="0.0" />
+      <entry key="H1" value="0.0" />
+      <entry key="H2" value="0.0" />
+      <entry key="H4" value="0.0" />
+      <entry key="D1" value="0.0" />
+      <entry key="W1" value="0.0" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="1.247540782473775" />
+      <entry key="MS500" value="3.312074243623036" />
+      <entry key="S2" value="7.653850635772809" />
+      <entry key="S5" value="15.436237087422477" />
+      <entry key="S10" value="22.946829063907376" />
+      <entry key="S30" value="31.735148459500447" />
+      <entry key="S60" value="34.76598175311204" />
+      <entry key="M2" value="36.594890963502934" />
+      <entry key="M5" value="37.92815255793666" />
+      <entry key="M10" value="38.44038619009458" />
+      <entry key="M15" value="38.62115482127838" />
+      <entry key="M30" value="38.8075540743145" />
+      <entry key="H1" value="38.90299392852331" />
+      <entry key="H2" value="38.95129766173779" />
+      <entry key="H4" value="38.9755985571021" />
+      <entry key="D1" value="38.99592607199426" />
+      <entry key="W1" value="38.999417837842614" />
+    </decayedShown>
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 0,
+  "fromUser": false
+}]]></component>
+  <component name="ProjectId" id="3FK5meUMV5MW42x7sJ57SBL8UoV" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "Vereinfachtes-UI",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/dharz/workspace/hsoagentchatkit",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "ml.llm.LLMThirdPartyAiProvidersConfigurable",
+    "ts.external.directory.path": "C:\\Program Files\\JetBrains\\IntelliJ IDEA 2026.1.2\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external",
+    "vue.rearranger.settings.migration": "true"
+  },
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "postgresql"
+    ]
+  }
+}]]></component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-37e91769500f-intellij.indexing.shared.core-IU-261.24374.151" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-IU-261.24374.151" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="d4bc900d-5746-40be-8135-1a0933e67bca" name="Changes" comment="" />
+      <created>1781811081323</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1781811081323</updated>
+      <workItem from="1781811082591" duration="1207000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>
