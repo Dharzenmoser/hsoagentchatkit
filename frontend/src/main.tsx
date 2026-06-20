@@ -1,4 +1,3 @@
-import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
@@ -11,11 +10,11 @@ if (!container) {
 
 loadChatKitScript();
 
-createRoot(container).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-);
+// NOTE: Do NOT wrap <App /> in <StrictMode>. The ChatKit web component is
+// initialized in a useLayoutEffect whose cleanup does not tear the widget down,
+// so StrictMode's dev-only setup→cleanup→setup cycle mounts a second
+// <openai-chatkit> iframe ("multiple frames"). Rendering once avoids the dupe.
+createRoot(container).render(<App />);
 
 
 
