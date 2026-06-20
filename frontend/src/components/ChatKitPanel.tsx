@@ -1,6 +1,11 @@
 import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ChatKit, useChatKit, type HostedApiConfig } from "@openai/chatkit-react";
+import {
+  ChatKit,
+  useChatKit,
+  type FileUploadStrategy,
+  type HostedApiConfig,
+} from "@openai/chatkit-react";
 import {
   createClientSecretFetcher,
   workflowId,
@@ -8,23 +13,41 @@ import {
   type ClientSecretFetchEvent,
 } from "../lib/chatkitSession";
 
-const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
+const MAX_DOCUMENT_BYTES = 50 * 1024 * 1024;
 const MAX_ATTACHMENTS = 5;
 const DOCUMENT_ACCEPT = {
+  "application/csv": [".csv"],
   "application/json": [".json"],
   "application/msword": [".doc"],
   "application/pdf": [".pdf"],
+  "application/rtf": [".rtf"],
   "application/vnd.ms-excel": [".xls"],
   "application/vnd.ms-powerpoint": [".ppt"],
+  "application/vnd.oasis.opendocument.presentation": [".odp"],
+  "application/vnd.oasis.opendocument.spreadsheet": [".ods"],
+  "application/vnd.oasis.opendocument.text": [".odt"],
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+  "application/xml": [".xml"],
   "text/csv": [".csv"],
+  "text/html": [".html", ".htm"],
   "text/markdown": [".md"],
   "text/plain": [".txt"],
+  "text/rtf": [".rtf"],
+  "text/tsv": [".tsv"],
+  "text/xml": [".xml"],
 } satisfies Record<string, string[]>;
 
 const SESSION_ENDPOINT = `${apiBase}/api/create-session`;
+const UPLOAD_ENDPOINT = new URL(
+  `${apiBase}/api/upload-file`,
+  typeof window === "undefined" ? "http://localhost" : window.location.origin
+).toString();
+
+type HostedApiConfigWithUpload = HostedApiConfig & {
+  uploadStrategy: FileUploadStrategy;
+};
 
 // --- Error Boundary ---
 
@@ -541,7 +564,11 @@ export function ChatKitPanel() {
   const chatkit = useChatKit({
     api: ({
       getClientSecret,
-    } satisfies HostedApiConfig),
+      uploadStrategy: {
+        type: "direct",
+        uploadUrl: UPLOAD_ENDPOINT,
+      },
+    } satisfies HostedApiConfigWithUpload),
     composer: {
       attachments: {
         enabled: true,
