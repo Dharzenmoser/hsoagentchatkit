@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import {
   ChatKit,
   useChatKit,
-  type FileUploadStrategy,
   type HostedApiConfig,
 } from "@openai/chatkit-react";
 import {
@@ -40,14 +39,6 @@ const DOCUMENT_ACCEPT = {
 } satisfies Record<string, string[]>;
 
 const SESSION_ENDPOINT = `${apiBase}/api/create-session`;
-const UPLOAD_ENDPOINT = new URL(
-  `${apiBase}/api/upload-file`,
-  typeof window === "undefined" ? "http://localhost" : window.location.origin
-).toString();
-
-type HostedApiConfigWithUpload = HostedApiConfig & {
-  uploadStrategy: FileUploadStrategy;
-};
 
 // --- Error Boundary ---
 
@@ -564,11 +555,7 @@ export function ChatKitPanel() {
   const chatkit = useChatKit({
     api: ({
       getClientSecret,
-      uploadStrategy: {
-        type: "direct",
-        uploadUrl: UPLOAD_ENDPOINT,
-      },
-    } satisfies HostedApiConfigWithUpload),
+    } satisfies HostedApiConfig),
     composer: {
       attachments: {
         enabled: true,

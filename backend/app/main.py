@@ -186,7 +186,20 @@ async def create_session(request: Request) -> JSONResponse:
     user_id, cookie_value = resolve_user(request.cookies)
     api_base = chatkit_api_base()
 
-    session_payload: dict = {"workflow": {"id": workflow_id}, "user": user_id}
+    session_payload: dict = {
+        "workflow": {"id": workflow_id},
+        "user": user_id,
+        # Hosted ChatKit disables attachments unless the session opts in. Without
+        # this the composer paperclip uploads fail with HTTP 400
+        # ("File uploads are disabled for this session"). max_file_size is in MB.
+        "chatkit_configuration": {
+            "file_upload": {
+                "enabled": True,
+                "max_files": 5,
+                "max_file_size": 50,
+            }
+        },
+    }
 
     print(f"[create-session] calling OpenAI — workflow={workflow_id}")
 

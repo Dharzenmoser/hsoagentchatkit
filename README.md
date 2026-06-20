@@ -46,11 +46,17 @@ your API key, workflow id, and app user id.
 
 ## Document uploads
 
-The composer includes a paperclip upload button. Uploaded documents are proxied
-through `/api/upload-file`, stored with OpenAI Files using `purpose=user_data`,
-and then sent to ChatKit as message attachments. Supported formats are PDF,
-Word, Excel, PowerPoint, OpenDocument, text, HTML, Markdown, CSV, TSV, XML, and
-JSON up to 50 MB per file.
+The composer includes a paperclip upload button. With the OpenAI-hosted
+integration, attachments are uploaded by ChatKit directly to OpenAI and made
+available to the workflow — uploads only work when the session is created with
+`chatkit_configuration.file_upload.enabled = true` (see `create-session` in
+`backend/app/main.py`). The session also sets `max_files` and `max_file_size`
+(MB). The client-side `uploadStrategy` (`direct`/`two_phase`) only applies to a
+self-hosted ChatKit backend, so it is intentionally not set here.
+
+Note: ChatKit's hosted backend enforces its own MIME allow-list. PDFs and images
+upload reliably; some document types (e.g. CSV/XLSX) may be rejected server-side
+regardless of the workflow's tools.
 
 ## Customize
 
