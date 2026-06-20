@@ -1,5 +1,5 @@
 const CHATKIT_SCRIPT_ID = "openai-chatkit-script";
-const CHATKIT_CDN_SRC = "https://cdn.platform.openai.com/deployments/chatkit/chatkit.js";
+const CHATKIT_SCRIPT_SRC = "/chatkit.js";
 
 export function loadChatKitScript() {
   if (
@@ -11,10 +11,10 @@ export function loadChatKitScript() {
 
   const script = document.createElement("script");
   script.id = CHATKIT_SCRIPT_ID;
-  script.src = CHATKIT_CDN_SRC;
+  script.src = CHATKIT_SCRIPT_SRC;
   script.async = true;
   script.onerror = () => {
-    console.error("Failed to load ChatKit script from CDN");
+    console.error("Failed to load ChatKit script");
   };
   document.head.append(script);
 }

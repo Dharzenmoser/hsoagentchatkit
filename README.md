@@ -46,11 +46,11 @@ your API key, workflow id, and app user id.
 
 ## Document uploads
 
-The custom composer includes a paperclip upload button. Uploaded documents are
-proxied through `/api/upload-file`, stored with OpenAI Files using
-`purpose=user_data`, and then sent to ChatKit as message attachments. Supported
-formats are PDF, Word, Excel, PowerPoint, text, Markdown, CSV, and JSON up to
-25 MB per file.
+The composer includes a paperclip upload button. Uploaded documents are proxied
+through `/api/upload-file`, stored with OpenAI Files using `purpose=user_data`,
+and then sent to ChatKit as message attachments. Supported formats are PDF,
+Word, Excel, PowerPoint, OpenDocument, text, HTML, Markdown, CSV, TSV, XML, and
+JSON up to 50 MB per file.
 
 ## Customize
 

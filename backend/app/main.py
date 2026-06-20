@@ -20,33 +20,52 @@ CHATKIT_WIDGET_SCRIPT_URL = "https://cdn.platform.openai.com/deployments/chatkit
 SESSION_COOKIE_NAME = "chatkit_session_id"
 SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30  # 30 days
 CHATKIT_WIDGET_CACHE_SECONDS = 60 * 60
-MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 DEFAULT_UPLOAD_MIME_TYPE = "application/octet-stream"
 ALLOWED_DOCUMENT_EXTENSIONS = {
     ".csv",
     ".doc",
     ".docx",
+    ".htm",
+    ".html",
     ".json",
     ".md",
+    ".odp",
+    ".ods",
+    ".odt",
     ".pdf",
     ".ppt",
     ".pptx",
+    ".rtf",
+    ".tsv",
     ".txt",
     ".xls",
     ".xlsx",
+    ".xml",
 }
 ALLOWED_DOCUMENT_MIME_TYPES = {
+    "application/csv",
     "application/json",
     "application/msword",
     "application/pdf",
+    "application/rtf",
     "application/vnd.ms-excel",
     "application/vnd.ms-powerpoint",
+    "application/vnd.oasis.opendocument.presentation",
+    "application/vnd.oasis.opendocument.spreadsheet",
+    "application/vnd.oasis.opendocument.text",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/xml",
     "text/csv",
+    "text/html",
     "text/markdown",
     "text/plain",
+    "text/rtf",
+    "text/tab-separated-values",
+    "text/tsv",
+    "text/xml",
 }
 
 app = FastAPI(title="Managed ChatKit Session API")
@@ -238,18 +257,27 @@ async def upload_file(file: UploadFile = File(...)) -> JSONResponse:
     filename = safe_upload_filename(file.filename)
     mime_type = resolve_upload_mime_type(file.content_type, filename)
     if not is_allowed_document_upload(filename, mime_type):
+        print(
+            "[upload-file] rejected unsupported upload "
+            f"filename={filename} mime_type={mime_type}"
+        )
         return respond(
             {
-                "error": "Unsupported document type. Upload PDF, Word, Excel, PowerPoint, text, Markdown, CSV, or JSON files.",
+                "error": "Unsupported document type. Upload PDF, Word, Excel, PowerPoint, OpenDocument, text, HTML, Markdown, CSV, TSV, XML, or JSON files.",
             },
             400,
         )
 
     content = await file.read(MAX_UPLOAD_BYTES + 1)
     if not content:
+        print(f"[upload-file] rejected empty upload filename={filename}")
         return respond({"error": "Uploaded document is empty"}, 400)
     if len(content) > MAX_UPLOAD_BYTES:
-        return respond({"error": "Uploaded document is larger than 25 MB"}, 400)
+        print(
+            "[upload-file] rejected oversized upload "
+            f"filename={filename} size={len(content)} limit={MAX_UPLOAD_BYTES}"
+        )
+        return respond({"error": "Uploaded document is larger than 50 MB"}, 400)
 
     api_base = chatkit_api_base()
     try:
@@ -265,8 +293,13 @@ async def upload_file(file: UploadFile = File(...)) -> JSONResponse:
 
     payload = parse_json(upstream)
     if not upstream.is_success:
+        message = upstream_error_message(payload, upstream.reason_phrase)
+        print(
+            "[upload-file] OpenAI upload failed "
+            f"status={upstream.status_code} filename={filename} error={message}"
+        )
         return respond(
-            {"error": upstream_error_message(payload, upstream.reason_phrase)},
+            {"error": message},
             upstream.status_code,
         )
 
