@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d4bc900d-5746-40be-8135-1a0933e67bca" name="Changes" comment="retry">
+    <list default="true" id="d4bc900d-5746-40be-8135-1a0933e67bca" name="Changes" comment="try to correct Upload">
       <change beforePath="$PROJECT_DIR$/frontend/src/components/ChatKitPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/ChatKitPanel.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -38,23 +37,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.1417761387571124" />
-      <entry key="MS500" value="2.7491857176271797" />
-      <entry key="S2" value="6.4974606790982605" />
-      <entry key="S5" value="8.93944500842603" />
-      <entry key="S10" value="11.026878583938874" />
-      <entry key="S30" value="18.5424556931926" />
-      <entry key="S60" value="34.989096024694106" />
-      <entry key="M2" value="59.06708183892733" />
-      <entry key="M5" value="86.03380602121061" />
-      <entry key="M10" value="98.39845194229366" />
-      <entry key="M15" value="102.99734232858879" />
-      <entry key="M30" value="107.85918266875653" />
-      <entry key="H1" value="110.39367632792387" />
-      <entry key="H2" value="111.68772529618194" />
-      <entry key="H4" value="112.34156742514499" />
-      <entry key="D1" value="112.88994100175637" />
-      <entry key="W1" value="112.98426942440885" />
+      <entry key="MS100" value="2.2071464717255274" />
+      <entry key="MS500" value="5.007516493919747" />
+      <entry key="S2" value="11.287923711800962" />
+      <entry key="S5" value="17.104838116323926" />
+      <entry key="S10" value="20.988002804598032" />
+      <entry key="S30" value="26.183288149940477" />
+      <entry key="S60" value="29.74199959501168" />
+      <entry key="M2" value="37.185637175380066" />
+      <entry key="M5" value="66.40788181877622" />
+      <entry key="M10" value="95.2353703684392" />
+      <entry key="M15" value="109.56527407651807" />
+      <entry key="M30" value="127.22225650101558" />
+      <entry key="H1" value="137.53944174936194" />
+      <entry key="H2" value="143.11903798762683" />
+      <entry key="H4" value="146.02083156311159" />
+      <entry key="D1" value="148.49801012083455" />
+      <entry key="W1" value="148.92815223136904" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -76,23 +75,23 @@
       <entry key="W1" value="0.0" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.0528274404316662" />
-      <entry key="MS500" value="2.6914263042201476" />
-      <entry key="S2" value="6.4668714520192205" />
-      <entry key="S5" value="8.92328906864292" />
-      <entry key="S10" value="11.016378033969282" />
-      <entry key="S30" value="18.535863195977047" />
-      <entry key="S60" value="34.98273049905325" />
-      <entry key="M2" value="59.06160738963793" />
-      <entry key="M5" value="86.03053343047962" />
-      <entry key="M10" value="98.3965553875073" />
-      <entry key="M15" value="102.99601203089141" />
-      <entry key="M30" value="107.85848224704196" />
-      <entry key="H1" value="110.39331683534367" />
-      <entry key="H2" value="111.68754316865915" />
-      <entry key="H4" value="112.3414757582876" />
-      <entry key="D1" value="112.88992563951359" />
-      <entry key="W1" value="112.9842672277262" />
+      <entry key="MS100" value="2.0987404237750154" />
+      <entry key="MS500" value="4.951661554531051" />
+      <entry key="S2" value="11.25580893365623" />
+      <entry key="S5" value="17.084951615416493" />
+      <entry key="S10" value="20.975607299404473" />
+      <entry key="S30" value="26.177984671859665" />
+      <entry key="S60" value="29.738902738031356" />
+      <entry key="M2" value="37.1834812318023" />
+      <entry key="M5" value="66.40593107274488" />
+      <entry key="M10" value="95.2338367742027" />
+      <entry key="M15" value="109.56406393325055" />
+      <entry key="M30" value="127.2215347925506" />
+      <entry key="H1" value="137.53904660222835" />
+      <entry key="H2" value="143.11883111069986" />
+      <entry key="H4" value="146.02072570139777" />
+      <entry key="D1" value="148.49799213208328" />
+      <entry key="W1" value="148.9281496529815" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -147,7 +146,7 @@
       <option name="presentableId" value="Default" />
       <updated>1781811081323</updated>
       <workItem from="1781811082591" duration="1207000" />
-      <workItem from="1781952206736" duration="427000" />
+      <workItem from="1781952206736" duration="964000" />
     </task>
     <task id="LOCAL-00001" summary="retry">
       <option name="closed" value="true" />
@@ -157,7 +156,15 @@
       <option name="project" value="LOCAL" />
       <updated>1781896200613</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="try to correct Upload">
+      <option name="closed" value="true" />
+      <created>1781952775752</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1781952775752</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -176,7 +183,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="retry" />
-    <option name="LAST_COMMIT_MESSAGE" value="retry" />
+    <MESSAGE value="try to correct Upload" />
+    <option name="LAST_COMMIT_MESSAGE" value="try to correct Upload" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
