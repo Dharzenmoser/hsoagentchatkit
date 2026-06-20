@@ -1,19 +1,31 @@
 ---
-name: chatkit-strictmode-double-iframe
-description: Why ChatKit opened multiple iframes/frames and the fix
+name: chatkit-multiple-frames
+description: Real cause of ChatKit "mehrere Frames" — same-origin chatkit.js proxy caused recursive app embedding
 metadata:
   type: project
 ---
 
-ChatKit was rendering "mehrere Frames" (multiple `<openai-chatkit>` iframes). Cause:
-the app (React 19) wrapped `<App />` in `<StrictMode>` in
-`frontend/src/main.tsx`. The `@openai/chatkit-react` `ChatKit` component
-initializes the web component in a `useLayoutEffect` whose cleanup does NOT tear
-the widget down — so StrictMode's dev-only setup→cleanup→setup cycle mounts the
-widget twice. Only happens in dev (`npm run dev`); production builds don't
-double-invoke. `useChatKit` options are structurally stable (constants +
-functions ignored by `deepEqualIgnoringFns`), so re-renders alone don't dupe.
+The "mehrere Frames" symptom was the WHOLE app rendering nested inside itself
+recursively (header + connection banner + ChatKit panel, ~3 levels deep), NOT
+duplicate ChatKit iframes.
 
-Fix: render `createRoot(...).render(<App />)` WITHOUT StrictMode. Tradeoff: lose
-StrictMode's dev checks for the whole app; acceptable since there's no clean way
-to exclude only the ChatKit subtree. See [[chatkit-hosted-file-upload]].
+Root cause: the frontend loaded the ChatKit script from a same-origin proxy
+(`/chatkit.js`, proxied by the backend from the CDN). ChatKit's loader builds its
+iframe URL from the directory of its own `<script>` src
+(`document.currentScript.src` → strip filename → append `index-*.html`). Served
+same-origin, the iframe resolved to `<app-origin>/index-*.html`, which the SPA
+fallback answered with the app's own `index.html` → the app embedded itself →
+recursion.
+
+Fix: load chatkit.js directly from the CDN
+(`https://cdn.platform.openai.com/deployments/chatkit/chatkit.js`) in
+`frontend/src/lib/loadChatKitScript.ts`. Do NOT proxy it same-origin. Removed the
+now-dead `/chatkit.js` dev proxy in `vite.config.ts`; the backend `/chatkit.js`
+route remains but is unused.
+
+Secondary/defensive: StrictMode was also removed from `frontend/src/main.tsx`
+(React 19) because the chatkit-react component inits the widget in a
+useLayoutEffect whose cleanup doesn't tear it down, so StrictMode's dev
+setup→cleanup→setup can double-mount the widget. That was a real but separate
+concern, not the cause of the recursion seen here. See
+[[chatkit-hosted-file-upload]].

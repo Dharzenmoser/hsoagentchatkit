@@ -36,9 +36,14 @@ Set the env vars in your shell (or process manager) before running. Use a
 workflow id from Agent Builder (starts with `wf_...`) and an API key from the
 same project and organization.
 
-The ChatKit browser script is served from `/chatkit.js` through the backend.
-This keeps the browser on the app's own origin and avoids direct CDN HTTP/2
-load failures such as `net::ERR_HTTP2_PROTOCOL_ERROR 200 (OK)`.
+The ChatKit browser script is loaded directly from OpenAI's CDN
+(`https://cdn.platform.openai.com/deployments/chatkit/chatkit.js`). It must NOT
+be proxied same-origin: ChatKit derives its iframe URL from the directory of its
+own `<script>` src, so serving it from this app's origin makes the widget iframe
+resolve to `<origin>/index-*.html`, which the SPA fallback answers with the
+app's own `index.html` — causing the app to embed itself recursively. (The
+backend still exposes a `/chatkit.js` proxy route, but it is unused by the
+frontend.)
 
 Do not send `API_DOMAIN_KEY` to the hosted ChatKit session endpoint. Domain
 allow-listing is configured in Agent Builder; the session request only needs

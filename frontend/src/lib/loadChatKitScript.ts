@@ -1,5 +1,11 @@
 const CHATKIT_SCRIPT_ID = "openai-chatkit-script";
-const CHATKIT_SCRIPT_SRC = "/chatkit.js";
+// Must be loaded from OpenAI's CDN, NOT proxied same-origin. ChatKit derives its
+// iframe URL from the directory of its own <script> src (document.currentScript).
+// Serving this from our origin (e.g. "/chatkit.js") makes the iframe resolve to
+// "<our-origin>/index-*.html", which the SPA fallback answers with our own
+// index.html — so the app embeds itself recursively ("multiple frames").
+const CHATKIT_SCRIPT_SRC =
+  "https://cdn.platform.openai.com/deployments/chatkit/chatkit.js";
 
 export function loadChatKitScript() {
   if (

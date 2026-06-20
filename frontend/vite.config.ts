@@ -35,10 +35,6 @@ export default defineConfig({
         target: apiTarget,
         changeOrigin: true,
       },
-      "/chatkit.js": {
-        target: apiTarget,
-        changeOrigin: true,
-      },
       "/scripts/create-session": {
         target: apiTarget,
         changeOrigin: true,
