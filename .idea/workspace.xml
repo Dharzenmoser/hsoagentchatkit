@@ -6,9 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="d4bc900d-5746-40be-8135-1a0933e67bca" name="Changes" comment="try to correct Upload">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/components/ChatKitPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/ChatKitPanel.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -151,7 +148,7 @@
       <workItem from="1781811082591" duration="1207000" />
       <workItem from="1781952206736" duration="6152000" />
       <workItem from="1781960832718" duration="3464000" />
-      <workItem from="1781965668456" duration="3763000" />
+      <workItem from="1781965668456" duration="4607000" />
     </task>
     <task id="LOCAL-00001" summary="retry">
       <option name="closed" value="true" />
@@ -241,7 +238,23 @@
       <option name="project" value="LOCAL" />
       <updated>1781969914300</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="try to correct Upload">
+      <option name="closed" value="true" />
+      <created>1781971325071</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1781971325072</updated>
+    </task>
+    <task id="LOCAL-00013" summary="try to correct Upload">
+      <option name="closed" value="true" />
+      <created>1781971343501</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1781971343501</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -261,7 +274,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="retry" />
     <MESSAGE value="try to correct Upload" />
-    <option name="LAST_COMMIT_MESSAGE" value="try to correct Upload" />
+    <MESSAGE value="try to correct Upload one more" />
+    <option name="LAST_COMMIT_MESSAGE" value="try to correct Upload one more" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
