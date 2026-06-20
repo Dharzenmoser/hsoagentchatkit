@@ -1,6 +1,6 @@
 import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ChangeEvent, ReactNode } from "react";
-import { ChatKit, useChatKit, type Attachment, type HostedApiConfig } from "@openai/chatkit-react";
+import type { ReactNode } from "react";
+import { ChatKit, useChatKit, type HostedApiConfig } from "@openai/chatkit-react";
 import {
   createClientSecretFetcher,
   workflowId,
@@ -25,24 +25,6 @@ const DOCUMENT_ACCEPT = {
 } satisfies Record<string, string[]>;
 
 const SESSION_ENDPOINT = `${apiBase}/api/create-session`;
-const UPLOAD_ENDPOINT = `${apiBase}/api/upload-file`;
-const DOCUMENT_INPUT_ACCEPT = Array.from(
-  new Set([
-    ...Object.keys(DOCUMENT_ACCEPT),
-    ...Object.values(DOCUMENT_ACCEPT).flat(),
-  ])
-).join(",");
-
-type UploadedDocument = Extract<Attachment, { type: "file" }>;
-
-type UploadResponse = {
-  type?: unknown;
-  id?: unknown;
-  name?: unknown;
-  mime_type?: unknown;
-  error?: unknown;
-  message?: unknown;
-};
 
 // --- Error Boundary ---
 
@@ -259,48 +241,6 @@ function formatExpiresAfter(value: unknown) {
   return "not provided";
 }
 
-function uploadErrorMessage(payload: UploadResponse, status: number) {
-  const error = payload.error;
-  if (typeof error === "string" && error.trim()) return error;
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim()) return message;
-  }
-  if (typeof payload.message === "string" && payload.message.trim()) return payload.message;
-  return `Document upload failed (HTTP ${status})`;
-}
-
-async function uploadDocument(file: File): Promise<UploadedDocument> {
-  const body = new FormData();
-  body.append("file", file);
-
-  const response = await fetch(UPLOAD_ENDPOINT, {
-    method: "POST",
-    body,
-  });
-  const payload = (await response.json().catch(() => ({}))) as UploadResponse;
-
-  if (!response.ok) {
-    throw new Error(uploadErrorMessage(payload, response.status));
-  }
-
-  if (
-    payload.type !== "file" ||
-    typeof payload.id !== "string" ||
-    typeof payload.name !== "string" ||
-    typeof payload.mime_type !== "string"
-  ) {
-    throw new Error("Document upload response did not contain valid file metadata");
-  }
-
-  return {
-    type: "file",
-    id: payload.id,
-    name: payload.name,
-    mime_type: payload.mime_type,
-  };
-}
-
 function toneClasses(tone: DiagnosticTone) {
   const classes: Record<DiagnosticTone, string> = {
     neutral: "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300",
@@ -515,12 +455,8 @@ export function ChatKitPanel() {
   const [session, setSession] = useState<SessionSnapshot>(() => initialSessionSnapshot());
   const [response, setResponse] = useState<ResponseSnapshot>(() => initialResponseSnapshot());
   const [events, setEvents] = useState<DiagnosticEvent[]>([]);
-  const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
-  const [uploadingDocuments, setUploadingDocuments] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const backendDiagnostics = useBackendDiagnosticsConnection();
   const eventId = useRef(0);
-  const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const appendEvent = useCallback((label: string, detail: string, tone: DiagnosticTone = "neutral") => {
     const event: DiagnosticEvent = {
@@ -672,150 +608,12 @@ export function ChatKitPanel() {
     },
   });
 
-  const syncComposerAttachments = useCallback(async (attachments: UploadedDocument[]) => {
-    await chatkit.setComposerValue({
-      text: "",
-      attachments,
-    });
-  }, [chatkit]);
-
-  const handleDocumentUpload = useCallback(async (changeEvent: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(changeEvent.currentTarget.files ?? []);
-    changeEvent.currentTarget.value = "";
-    if (!files.length) return;
-
-    const remainingSlots = MAX_ATTACHMENTS - uploadedDocuments.length;
-    if (remainingSlots <= 0) {
-      setUploadError(`Maximum ${MAX_ATTACHMENTS} documents can be attached.`);
-      appendEvent("Document upload", "Attachment limit reached.", "warn");
-      return;
-    }
-
-    const selectedFiles = files.slice(0, remainingSlots);
-    const skippedCount = files.length - selectedFiles.length;
-    setUploadingDocuments(true);
-    setUploadError(null);
-    appendEvent(
-      "Document upload",
-      `Uploading ${selectedFiles.length} document${selectedFiles.length === 1 ? "" : "s"} through the backend.`,
-      "active"
-    );
-
-    const results = await Promise.allSettled(selectedFiles.map((file) => uploadDocument(file)));
-    const uploaded = results
-      .filter((result): result is PromiseFulfilledResult<UploadedDocument> => result.status === "fulfilled")
-      .map((result) => result.value);
-    const failed = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
-
-    const nextDocuments = [...uploadedDocuments, ...uploaded];
-    if (uploaded.length) {
-      try {
-        await syncComposerAttachments(nextDocuments);
-        setUploadedDocuments(nextDocuments);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to attach uploaded documents to ChatKit";
-        setUploadError(message);
-        appendEvent("Document attach failed", message, "error");
-        setUploadingDocuments(false);
-        return;
-      }
-    }
-
-    if (failed.length) {
-      const message = failed[0].reason instanceof Error
-        ? failed[0].reason.message
-        : "One or more documents failed to upload.";
-      setUploadError(message);
-      appendEvent("Document upload failed", message, "error");
-    } else if (skippedCount > 0) {
-      const message = `${skippedCount} document${skippedCount === 1 ? "" : "s"} skipped because the attachment limit is ${MAX_ATTACHMENTS}.`;
-      setUploadError(message);
-      appendEvent("Document upload", message, "warn");
-    } else {
-      setUploadError(null);
-      appendEvent("Document upload", `${uploaded.length} document${uploaded.length === 1 ? "" : "s"} attached to the composer.`, "ok");
-    }
-
-    setUploadingDocuments(false);
-  }, [appendEvent, syncComposerAttachments, uploadedDocuments]);
-
-  const removeUploadedDocument = useCallback(async (documentId: string) => {
-    const nextDocuments = uploadedDocuments.filter((document) => document.id !== documentId);
-    setUploadedDocuments(nextDocuments);
-    setUploadError(null);
-    try {
-      await syncComposerAttachments(nextDocuments);
-      appendEvent("Document removed", `Composer now has ${nextDocuments.length} attachment${nextDocuments.length === 1 ? "" : "s"}.`, "neutral");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to update ChatKit attachments";
-      setUploadError(message);
-      appendEvent("Document remove failed", message, "error");
-    }
-  }, [appendEvent, syncComposerAttachments, uploadedDocuments]);
-
   return (
     <div className="flex min-h-0 flex-1 w-full flex-col gap-3">
 
       <div className="shrink-0">
         <ConnectionBanner />
       </div>
-
-      <section className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Dokumente</p>
-            <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-              {uploadedDocuments.length
-                ? `${uploadedDocuments.length} von ${MAX_ATTACHMENTS} Dokumenten im ChatKit-Composer bereit.`
-                : "PDF, Word, Excel, PowerPoint, Text, Markdown, CSV oder JSON hochladen."}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              ref={uploadInputRef}
-              className="hidden"
-              type="file"
-              multiple
-              accept={DOCUMENT_INPUT_ACCEPT}
-              onChange={(event) => { void handleDocumentUpload(event); }}
-            />
-            <button
-              type="button"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-              disabled={uploadingDocuments || uploadedDocuments.length >= MAX_ATTACHMENTS}
-              onClick={() => uploadInputRef.current?.click()}
-            >
-              {uploadingDocuments ? "Upload läuft..." : "Dokument hochladen"}
-            </button>
-          </div>
-        </div>
-
-        {uploadedDocuments.length > 0 && (
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {uploadedDocuments.map((document) => (
-              <li
-                key={document.id}
-                className="flex max-w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
-              >
-                <span className="max-w-[16rem] truncate">{document.name}</span>
-                <span className="text-slate-400 dark:text-slate-500">{document.mime_type}</span>
-                <button
-                  type="button"
-                  className="rounded px-1 font-semibold text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                  onClick={() => void removeUploadedDocument(document.id)}
-                  aria-label={`${document.name} entfernen`}
-                >
-                  x
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {uploadError && (
-          <p className="mt-2 text-xs leading-5 text-red-600 dark:text-red-400">{uploadError}</p>
-        )}
-      </section>
 
       {agentError && (
         <div className="flex flex-col gap-1.5 rounded-xl bg-red-50 px-4 py-3 text-sm dark:bg-red-900/20">
