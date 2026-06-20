@@ -1,6 +1,11 @@
 import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ChatKit, useChatKit, type HostedApiConfig } from "@openai/chatkit-react";
+import {
+  ChatKit,
+  useChatKit,
+  type FileUploadStrategy,
+  type HostedApiConfig,
+} from "@openai/chatkit-react";
 import {
   createClientSecretFetcher,
   workflowId,
@@ -25,6 +30,11 @@ const DOCUMENT_ACCEPT = {
 } satisfies Record<string, string[]>;
 
 const SESSION_ENDPOINT = `${apiBase}/api/create-session`;
+const UPLOAD_ENDPOINT = `${apiBase}/api/upload-file`;
+
+type HostedApiConfigWithUploads = HostedApiConfig & {
+  uploadStrategy: FileUploadStrategy;
+};
 
 // --- Error Boundary ---
 
@@ -541,7 +551,11 @@ export function ChatKitPanel() {
   const chatkit = useChatKit({
     api: ({
       getClientSecret,
-    } satisfies HostedApiConfig),
+      uploadStrategy: {
+        type: "direct",
+        uploadUrl: UPLOAD_ENDPOINT,
+      },
+    } satisfies HostedApiConfigWithUploads),
     composer: {
       attachments: {
         enabled: true,
