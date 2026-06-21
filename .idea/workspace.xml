@@ -13,7 +13,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="39" />
+    <option name="cachedIndexableFilesCount" value="42" />
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -148,7 +148,8 @@
       <workItem from="1781811082591" duration="1207000" />
       <workItem from="1781952206736" duration="6152000" />
       <workItem from="1781960832718" duration="3464000" />
-      <workItem from="1781965668456" duration="4607000" />
+      <workItem from="1781965668456" duration="5855000" />
+      <workItem from="1782050679163" duration="4804000" />
     </task>
     <task id="LOCAL-00001" summary="retry">
       <option name="closed" value="true" />
@@ -254,7 +255,15 @@
       <option name="project" value="LOCAL" />
       <updated>1781971343501</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="try to correct Upload">
+      <option name="closed" value="true" />
+      <created>1781979280767</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1781979280767</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -273,9 +282,9 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="retry" />
-    <MESSAGE value="try to correct Upload" />
     <MESSAGE value="try to correct Upload one more" />
-    <option name="LAST_COMMIT_MESSAGE" value="try to correct Upload one more" />
+    <MESSAGE value="try to correct Upload" />
+    <option name="LAST_COMMIT_MESSAGE" value="try to correct Upload" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
