@@ -38,3 +38,10 @@ in frontend/, rebuild, hard-reload/incognito to bust the CDN cache, then confirm
 the `/v1/chatkit/files` request is POST 200. If it still GETs after alignment,
 it's an OpenAI-side bug (see chatkit-js issue #13). Do NOT change the Agent for
 this.
+
+2026-06-22 update: the npm bump was applied and committed (a4270b1). Installed
+now: `@openai/chatkit-react` 1.5.1 (package.json `^1.5.1`) and `@openai/chatkit`
+1.7.0. Frontend rebuilds cleanly (`vite build` ✓). Code side of the fix is
+complete. Still UNVERIFIED at runtime — needs browser test in incognito/hard-reload
+to confirm `/v1/chatkit/files` is now POST 200 (not GET). That check requires live
+OpenAI creds + a deployed/running frontend.
