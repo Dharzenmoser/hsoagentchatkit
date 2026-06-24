@@ -60,9 +60,10 @@ export function createClientSecretFetcher(
   onEvent?: (event: ClientSecretFetchEvent) => void
 ) {
   const workflowSource = workflow ? "frontend" : "backend";
+  let createdSessionInThisLifecycle = false;
 
   return async (currentSecret: string | null) => {
-    if (currentSecret) {
+    if (currentSecret && createdSessionInThisLifecycle) {
       onEvent?.({
         type: "session_reused",
         endpoint,
@@ -72,6 +73,8 @@ export function createClientSecretFetcher(
       return currentSecret;
     }
 
+    // Always create one fresh session after the widget mounts so server-side
+    // session config changes, such as file uploads being enabled, are picked up.
     const body = workflow ? { workflow: { id: workflow } } : {};
     onEvent?.({
       type: "session_request_started",
@@ -133,6 +136,7 @@ export function createClientSecretFetcher(
       throw new Error(message);
     }
 
+    createdSessionInThisLifecycle = true;
     onEvent?.({
       type: "session_request_succeeded",
       endpoint,

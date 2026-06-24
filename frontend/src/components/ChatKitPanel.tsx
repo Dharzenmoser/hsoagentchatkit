@@ -14,28 +14,19 @@ import {
 
 const MAX_DOCUMENT_BYTES = 50 * 1024 * 1024;
 const MAX_ATTACHMENTS = 5;
+// OpenAI's hosted ChatKit backend enforces its own upload allow-list per workflow.
+// For this workflow it accepts ONLY images and PDF — every office/text document
+// type (csv, txt, json, md, html, xml, doc(x), xls(x), ppt(x), rtf) is rejected
+// server-side with HTTP 400 `chatkit.file_upload_type_rejected`. Advertising those
+// types here just lets users pick files that are guaranteed to fail. To accept
+// documents, the workflow's file-input config must be widened in OpenAI Agent
+// Builder — it cannot be enabled from this app.
 const DOCUMENT_ACCEPT = {
-  "application/csv": [".csv"],
-  "application/json": [".json"],
-  "application/msword": [".doc"],
   "application/pdf": [".pdf"],
-  "application/rtf": [".rtf"],
-  "application/vnd.ms-excel": [".xls"],
-  "application/vnd.ms-powerpoint": [".ppt"],
-  "application/vnd.oasis.opendocument.presentation": [".odp"],
-  "application/vnd.oasis.opendocument.spreadsheet": [".ods"],
-  "application/vnd.oasis.opendocument.text": [".odt"],
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
-  "application/xml": [".xml"],
-  "text/csv": [".csv"],
-  "text/html": [".html", ".htm"],
-  "text/markdown": [".md"],
-  "text/plain": [".txt"],
-  "text/rtf": [".rtf"],
-  "text/tsv": [".tsv"],
-  "text/xml": [".xml"],
+  "image/png": [".png"],
+  "image/jpeg": [".jpg", ".jpeg"],
+  "image/gif": [".gif"],
+  "image/webp": [".webp"],
 } satisfies Record<string, string[]>;
 
 const SESSION_ENDPOINT = `${apiBase}/api/create-session`;
@@ -253,6 +244,34 @@ function formatExpiresAfter(value: unknown) {
   if (typeof value === "string" && value.trim()) return value;
   if (typeof value === "number") return String(value);
   return "not provided";
+}
+
+function normalizeChatKitErrorMessage(message: string) {
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("file_upload_type_rejected") ||
+    lower.includes("uploaded file type is not allowed") ||
+    lower.includes("file type")
+  ) {
+    return "Datei-Upload fehlgeschlagen. Dieser Workflow akzeptiert aktuell nur PDF und Bilder (PNG, JPG, JPEG, GIF, WebP).";
+  }
+  if (
+    lower.includes("file uploads are disabled") ||
+    lower.includes("upload disabled") ||
+    lower.includes("file_upload")
+  ) {
+    return "Datei-Upload ist fuer diese ChatKit-Session nicht aktiviert. Lade die Seite neu, damit eine frische Session erstellt wird.";
+  }
+  return message;
+}
+
+function formatChatKitLog(name: string, data?: Record<string, unknown>) {
+  if (!data) return name;
+  try {
+    return `${name}: ${JSON.stringify(data)}`;
+  } catch {
+    return name;
+  }
 }
 
 function toneClasses(tone: DiagnosticTone) {
@@ -565,7 +584,9 @@ export function ChatKitPanel() {
       },
     },
     onError: (detail) => {
-      const message = detail.error?.message ?? "Unbekannter Fehler vom Agenten";
+      const message = normalizeChatKitErrorMessage(
+        detail.error?.message ?? "Unbekannter Fehler vom Agenten"
+      );
       setAgentError(message);
       setResponse((current) => ({
         ...current,
@@ -614,11 +635,20 @@ export function ChatKitPanel() {
       );
     },
     onLog: (detail) => {
-      appendEvent(
-        "ChatKit log",
-        detail.data ? `${detail.name}: ${JSON.stringify(detail.data)}` : detail.name,
-        "neutral"
-      );
+      const logDetail = formatChatKitLog(detail.name, detail.data);
+      const uploadMessage = normalizeChatKitErrorMessage(logDetail);
+      if (uploadMessage !== logDetail) {
+        setAgentError(uploadMessage);
+        setResponse((current) => ({
+          ...current,
+          status: "error",
+          detail: uploadMessage,
+          updatedAt: formatDiagnosticTime(),
+        }));
+        appendEvent("Upload error", uploadMessage, "error");
+        return;
+      }
+      appendEvent("ChatKit log", logDetail, "neutral");
     },
   });
 
