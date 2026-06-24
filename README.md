@@ -59,9 +59,10 @@ available to the workflow — uploads only work when the session is created with
 (MB). The client-side `uploadStrategy` (`direct`/`two_phase`) only applies to a
 self-hosted ChatKit backend, so it is intentionally not set here.
 
-Note: ChatKit's hosted backend enforces its own MIME allow-list. PDFs and images
-upload reliably; some document types (e.g. CSV/XLSX) may be rejected server-side
-regardless of the workflow's tools.
+Note: ChatKit's hosted backend enforces its own MIME allow-list for the native
+paperclip. PDFs and images upload there. Word and Excel files use the separate
+`Word/Excel hochladen` button, which uploads through `/api/upload-file` and then
+attaches the returned OpenAI file id to the ChatKit composer.
 
 ## Customize
 
