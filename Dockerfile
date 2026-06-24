@@ -15,7 +15,7 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 
-RUN apk add --no-cache python3 make g++ bash sed
+RUN apk add --no-cache python3 make g++ bash sed libreoffice ttf-dejavu fontconfig
 
 COPY package*.json ./
 RUN npm ci --omit=dev

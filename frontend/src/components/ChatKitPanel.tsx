@@ -15,13 +15,14 @@ import {
 
 const MAX_DOCUMENT_BYTES = 50 * 1024 * 1024;
 const MAX_ATTACHMENTS = 5;
-const OFFICE_UPLOAD_URL = `${apiBase}/api/upload-file`;
+const MAX_BUTTON_DOCUMENTS = 20;
+const DOCUMENT_PDF_UPLOAD_URL = `${apiBase}/api/upload-documents-as-pdf`;
 // OpenAI's hosted ChatKit backend enforces its own upload allow-list per workflow.
 // For this workflow it accepts ONLY images and PDF — every office/text document
 // type (csv, txt, json, md, html, xml, doc(x), xls(x), ppt(x), rtf) is rejected
 // server-side with HTTP 400 `chatkit.file_upload_type_rejected`. Advertising those
-// types here just lets users pick files that are guaranteed to fail. Office
-// files use the separate backend upload button below. For documents in the
+// types here just lets users pick files that are guaranteed to fail. Convertible
+// documents use the separate backend PDF button below. For documents in the
 // hosted paperclip, widen the workflow file-input config in Agent Builder.
 const DOCUMENT_ACCEPT = {
   "application/pdf": [".pdf"],
@@ -31,8 +32,9 @@ const DOCUMENT_ACCEPT = {
   "image/webp": [".webp"],
 } satisfies Record<string, string[]>;
 
-const OFFICE_ACCEPT = {
+const DOCUMENT_CONVERSION_ACCEPT = {
   "application/msword": [".doc"],
+  "application/pdf": [".pdf"],
   "application/zip": [".zip"],
   "application/x-zip-compressed": [".zip"],
   "application/vnd.ms-excel": [".xls"],
@@ -41,7 +43,7 @@ const OFFICE_ACCEPT = {
   "text/csv": [".csv"],
 } satisfies Record<string, string[]>;
 
-const OFFICE_UPLOAD_ACCEPT = Object.values(OFFICE_ACCEPT).flat().join(",");
+const DOCUMENT_CONVERSION_UPLOAD_ACCEPT = Object.values(DOCUMENT_CONVERSION_ACCEPT).flat().join(",");
 
 const SESSION_ENDPOINT = `${apiBase}/api/create-session`;
 
@@ -174,10 +176,10 @@ type DiagnosticEvent = {
   tone: DiagnosticTone;
 };
 
-type OfficeUploadStatus = "idle" | "uploading" | "attached" | "error";
+type DocumentUploadStatus = "idle" | "uploading" | "attached" | "error";
 
-type OfficeUploadState = {
-  status: OfficeUploadStatus;
+type DocumentUploadState = {
+  status: DocumentUploadStatus;
   detail: string;
 };
 
@@ -274,7 +276,7 @@ function normalizeChatKitErrorMessage(message: string) {
     lower.includes("uploaded file type is not allowed") ||
     lower.includes("file type")
   ) {
-    return "Datei-Upload fehlgeschlagen. Nutze fuer Word/Excel/ZIP den separaten Button; der ChatKit-Paperclip akzeptiert hier nur PDF und Bilder.";
+    return "Datei-Upload fehlgeschlagen. Nutze fuer Office/ZIP oder mehrere Dokumente den Button 'Dokumente als PDF hochladen'; der ChatKit-Paperclip akzeptiert hier nur PDF und Bilder.";
   }
   if (
     lower.includes("file uploads are disabled") ||
@@ -295,17 +297,17 @@ function formatChatKitLog(name: string, data?: Record<string, unknown>) {
   }
 }
 
-function acceptedOfficeExtensions() {
-  return new Set(Object.values(OFFICE_ACCEPT).flat());
+function acceptedDocumentExtensions() {
+  return new Set(Object.values(DOCUMENT_CONVERSION_ACCEPT).flat());
 }
 
-function isAcceptedOfficeFile(file: File) {
+function isAcceptedDocumentFile(file: File) {
   const lowerName = file.name.toLowerCase();
   const extension = lowerName.includes(".")
     ? lowerName.slice(lowerName.lastIndexOf("."))
     : "";
-  return Object.keys(OFFICE_ACCEPT).includes(file.type) ||
-    acceptedOfficeExtensions().has(extension);
+  return Object.keys(DOCUMENT_CONVERSION_ACCEPT).includes(file.type) ||
+    acceptedDocumentExtensions().has(extension);
 }
 
 function uploadErrorMessage(payload: { error?: unknown; message?: unknown }, status: number) {
@@ -333,11 +335,11 @@ function isFileAttachment(value: unknown): value is Extract<Attachment, { type: 
     typeof candidate.mime_type === "string";
 }
 
-async function uploadOfficeFile(file: File) {
+async function uploadDocumentsAsPdf(files: File[]) {
   const formData = new FormData();
-  formData.append("file", file);
+  files.forEach((file) => formData.append("files", file));
 
-  const response = await fetch(OFFICE_UPLOAD_URL, {
+  const response = await fetch(DOCUMENT_PDF_UPLOAD_URL, {
     method: "POST",
     body: formData,
   });
@@ -572,13 +574,13 @@ export function ChatKitPanel() {
   const [session, setSession] = useState<SessionSnapshot>(() => initialSessionSnapshot());
   const [response, setResponse] = useState<ResponseSnapshot>(() => initialResponseSnapshot());
   const [events, setEvents] = useState<DiagnosticEvent[]>([]);
-  const [officeUpload, setOfficeUpload] = useState<OfficeUploadState>({
+  const [documentUpload, setDocumentUpload] = useState<DocumentUploadState>({
     status: "idle",
     detail: "",
   });
   const backendDiagnostics = useBackendDiagnosticsConnection();
   const eventId = useRef(0);
-  const officeInputRef = useRef<HTMLInputElement | null>(null);
+  const documentInputRef = useRef<HTMLInputElement | null>(null);
 
   const appendEvent = useCallback((label: string, detail: string, tone: DiagnosticTone = "neutral") => {
     const event: DiagnosticEvent = {
@@ -741,55 +743,53 @@ export function ChatKitPanel() {
     },
   });
 
-  const handleOfficeFilesSelected = useCallback(async (files: FileList | null) => {
+  const handleDocumentFilesSelected = useCallback(async (files: FileList | null) => {
     const selectedFiles = Array.from(files ?? []);
     if (!selectedFiles.length) return;
 
-    if (selectedFiles.length > MAX_ATTACHMENTS) {
-      const message = `Maximal ${MAX_ATTACHMENTS} Dateien pro Nachricht.`;
-      setOfficeUpload({ status: "error", detail: message });
-      appendEvent("Office upload", message, "error");
+    if (selectedFiles.length > MAX_BUTTON_DOCUMENTS) {
+      const message = `Maximal ${MAX_BUTTON_DOCUMENTS} Dokumente pro Upload.`;
+      setDocumentUpload({ status: "error", detail: message });
+      appendEvent("Document upload", message, "error");
       return;
     }
 
-    const invalidFile = selectedFiles.find((file) => !isAcceptedOfficeFile(file));
+    const invalidFile = selectedFiles.find((file) => !isAcceptedDocumentFile(file));
     if (invalidFile) {
-      const message = `${invalidFile.name} ist kein unterstuetztes Word-, Excel- oder ZIP-Format.`;
-      setOfficeUpload({ status: "error", detail: message });
-      appendEvent("Office upload", message, "error");
+      const message = `${invalidFile.name} ist kein unterstuetztes Dokumentformat.`;
+      setDocumentUpload({ status: "error", detail: message });
+      appendEvent("Document upload", message, "error");
       return;
     }
 
     const oversizedFile = selectedFiles.find((file) => file.size > MAX_DOCUMENT_BYTES);
     if (oversizedFile) {
       const message = `${oversizedFile.name} ist groesser als 50 MB.`;
-      setOfficeUpload({ status: "error", detail: message });
-      appendEvent("Office upload", message, "error");
+      setDocumentUpload({ status: "error", detail: message });
+      appendEvent("Document upload", message, "error");
       return;
     }
 
     setAgentError(null);
-    setOfficeUpload({
+    setDocumentUpload({
       status: "uploading",
       detail: selectedFiles.length === 1
-        ? `${selectedFiles[0].name} wird hochgeladen...`
-        : `${selectedFiles.length} Dateien werden hochgeladen...`,
+        ? `${selectedFiles[0].name} wird zu PDF konvertiert...`
+        : `${selectedFiles.length} Dokumente werden zu einem PDF konvertiert...`,
     });
-    appendEvent("Office upload", `Uploading ${selectedFiles.length} file(s) through backend.`, "active");
+    appendEvent("Document upload", `Converting ${selectedFiles.length} document(s) through backend.`, "active");
 
     try {
-      const attachments = await Promise.all(selectedFiles.map(uploadOfficeFile));
-      await chatkit.setComposerValue({ attachments });
-      const message = attachments.length === 1
-        ? `${attachments[0].name} wurde an den Composer angehaengt.`
-        : `${attachments.length} Dateien wurden an den Composer angehaengt.`;
-      setOfficeUpload({ status: "attached", detail: message });
-      appendEvent("Office attached", message, "ok");
+      const attachment = await uploadDocumentsAsPdf(selectedFiles);
+      await chatkit.setComposerValue({ attachments: [attachment] });
+      const message = `${attachment.name} wurde erzeugt und an den Composer angehaengt.`;
+      setDocumentUpload({ status: "attached", detail: message });
+      appendEvent("PDF attached", message, "ok");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Office-/ZIP-Datei konnte nicht hochgeladen werden.";
-      setOfficeUpload({ status: "error", detail: message });
+      const message = error instanceof Error ? error.message : "Dokumente konnten nicht als PDF hochgeladen werden.";
+      setDocumentUpload({ status: "error", detail: message });
       setAgentError(message);
-      appendEvent("Office upload", message, "error");
+      appendEvent("Document upload", message, "error");
     }
   }, [appendEvent, chatkit]);
 
@@ -799,33 +799,33 @@ export function ChatKitPanel() {
       <div className="flex shrink-0 flex-wrap items-center gap-2">
         <ConnectionBanner />
         <input
-          ref={officeInputRef}
+          ref={documentInputRef}
           type="file"
           multiple
-          accept={OFFICE_UPLOAD_ACCEPT}
+          accept={DOCUMENT_CONVERSION_UPLOAD_ACCEPT}
           className="hidden"
           onChange={(event) => {
-            void handleOfficeFilesSelected(event.currentTarget.files);
+            void handleDocumentFilesSelected(event.currentTarget.files);
             event.currentTarget.value = "";
           }}
         />
         <button
           type="button"
-          disabled={officeUpload.status === "uploading"}
-          onClick={() => officeInputRef.current?.click()}
+          disabled={documentUpload.status === "uploading"}
+          onClick={() => documentInputRef.current?.click()}
           className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
         >
-          {officeUpload.status === "uploading" ? "Upload laeuft..." : "Word/Excel/ZIP hochladen"}
+          {documentUpload.status === "uploading" ? "Konvertierung laeuft..." : "Dokumente als PDF hochladen"}
         </button>
-        {officeUpload.detail && (
+        {documentUpload.detail && (
           <span
             className={`max-w-xl rounded-xl px-3 py-2 text-sm ${
-              officeUpload.status === "error"
+              documentUpload.status === "error"
                 ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300"
                 : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
             }`}
           >
-            {officeUpload.detail}
+            {documentUpload.detail}
           </span>
         )}
       </div>

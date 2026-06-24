@@ -60,10 +60,13 @@ available to the workflow — uploads only work when the session is created with
 self-hosted ChatKit backend, so it is intentionally not set here.
 
 Note: ChatKit's hosted backend enforces its own MIME allow-list for the native
-paperclip. PDFs and images upload there. Word, Excel, and ZIP files use the
-separate `Word/Excel/ZIP hochladen` button, which uploads through
-`/api/upload-file` and then attaches the returned OpenAI file id to the ChatKit
-composer.
+paperclip. PDFs and images upload there. Word, Excel, CSV, PDF, and ZIP files
+can also use the separate `Dokumente als PDF hochladen` button. That endpoint
+accepts up to 20 selected documents, extracts supported files from ZIP archives,
+converts them into one combined PDF through LibreOffice, uploads that PDF to
+OpenAI Files, and attaches the returned PDF file id to the ChatKit composer.
+The conversion backend needs LibreOffice available on the server; the Docker
+runtime image installs it.
 
 ## Customize
 

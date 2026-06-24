@@ -5,7 +5,12 @@ from __future__ import annotations
 import json
 import mimetypes
 import os
+import shutil
+import subprocess
+import tempfile
 import uuid
+import zipfile
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -14,6 +19,7 @@ from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from pypdf import PdfReader, PdfWriter
 
 DEFAULT_CHATKIT_BASE = "https://api.openai.com"
 CHATKIT_WIDGET_SCRIPT_URL = "https://cdn.platform.openai.com/deployments/chatkit/chatkit.js"
@@ -21,7 +27,13 @@ SESSION_COOKIE_NAME = "chatkit_session_id"
 SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30  # 30 days
 CHATKIT_WIDGET_CACHE_SECONDS = 60 * 60
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+MAX_DOCUMENTS_PER_PDF = 20
 DEFAULT_UPLOAD_MIME_TYPE = "application/octet-stream"
+PDF_MIME_TYPE = "application/pdf"
+ZIP_MIME_TYPES = {
+    "application/zip",
+    "application/x-zip-compressed",
+}
 ALLOWED_DOCUMENT_EXTENSIONS = {
     ".csv",
     ".doc",
@@ -69,6 +81,29 @@ ALLOWED_DOCUMENT_MIME_TYPES = {
     "text/tab-separated-values",
     "text/tsv",
     "text/xml",
+}
+PDF_CONVERSION_EXTENSIONS = {
+    ".csv",
+    ".doc",
+    ".docx",
+    ".htm",
+    ".html",
+    ".odp",
+    ".ods",
+    ".odt",
+    ".pdf",
+    ".ppt",
+    ".pptx",
+    ".rtf",
+    ".tsv",
+    ".txt",
+    ".xls",
+    ".xlsx",
+    ".xml",
+}
+PDF_CONVERSION_MIME_TYPES = ALLOWED_DOCUMENT_MIME_TYPES - ZIP_MIME_TYPES - {
+    "application/json",
+    "text/markdown",
 }
 
 app = FastAPI(title="Managed ChatKit Session API")
@@ -331,6 +366,301 @@ async def upload_file(file: UploadFile = File(...)) -> JSONResponse:
             "mime_type": mime_type,
         },
         200,
+    )
+
+
+@app.post("/api/upload-documents-as-pdf")
+async def upload_documents_as_pdf(files: list[UploadFile] = File(...)) -> JSONResponse:
+    """Convert up to 20 uploaded documents into one PDF and upload it for ChatKit."""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return respond({"error": "Missing OPENAI_API_KEY environment variable"}, 500)
+
+    if not files:
+        return respond({"error": "Keine Dokumente hochgeladen."}, 400)
+    if len(files) > MAX_DOCUMENTS_PER_PDF:
+        return respond(
+            {"error": f"Maximal {MAX_DOCUMENTS_PER_PDF} Dokumente pro Upload."},
+            400,
+        )
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="chatkit-docs-") as tmp:
+            work_dir = Path(tmp)
+            source_dir = work_dir / "source"
+            converted_dir = work_dir / "converted"
+            source_dir.mkdir()
+            converted_dir.mkdir()
+
+            document_paths: list[Path] = []
+            for upload in files:
+                await collect_upload_document(upload, source_dir, document_paths)
+                if len(document_paths) > MAX_DOCUMENTS_PER_PDF:
+                    raise DocumentConversionError(
+                        f"Maximal {MAX_DOCUMENTS_PER_PDF} Dokumente pro Upload."
+                    )
+
+            if not document_paths:
+                raise DocumentConversionError(
+                    "Keine unterstuetzten Dokumente zum Konvertieren gefunden."
+                )
+
+            output_pdf = merge_documents_to_pdf(
+                document_paths,
+                converted_dir,
+                work_dir / "converted-documents.pdf",
+            )
+            pdf_content = output_pdf.read_bytes()
+    except DocumentConversionError as error:
+        print(f"[upload-documents-as-pdf] rejected upload: {error}")
+        return respond({"error": str(error)}, 400)
+    except RuntimeError as error:
+        print(f"[upload-documents-as-pdf] conversion failed: {error}")
+        return respond({"error": str(error)}, 500)
+    except Exception as error:
+        print(f"[upload-documents-as-pdf] unexpected failure: {error}")
+        return respond({"error": "Failed to convert documents to PDF"}, 500)
+
+    api_base = chatkit_api_base()
+    filename = "converted-documents.pdf"
+    try:
+        async with httpx.AsyncClient(base_url=api_base, timeout=60.0) as client:
+            upstream = await client.post(
+                "/v1/files",
+                headers={"Authorization": f"Bearer {api_key}"},
+                data={"purpose": "user_data"},
+                files={"file": (filename, pdf_content, PDF_MIME_TYPE)},
+            )
+    except httpx.RequestError as error:
+        return respond({"error": f"Failed to upload converted PDF: {error}"}, 502)
+
+    payload = parse_json(upstream)
+    if not upstream.is_success:
+        message = upstream_error_message(payload, upstream.reason_phrase)
+        print(
+            "[upload-documents-as-pdf] OpenAI upload failed "
+            f"status={upstream.status_code} error={message}"
+        )
+        return respond({"error": message}, upstream.status_code)
+
+    file_id = payload.get("id") if isinstance(payload, Mapping) else None
+    if not isinstance(file_id, str) or not file_id:
+        return respond({"error": "Missing file id in converted PDF upload response"}, 502)
+
+    return respond(
+        {
+            "type": "file",
+            "id": file_id,
+            "name": filename,
+            "mime_type": PDF_MIME_TYPE,
+        },
+        200,
+    )
+
+
+class DocumentConversionError(ValueError):
+    """Raised when a user upload cannot be converted into the combined PDF."""
+
+
+async def collect_upload_document(
+    upload: UploadFile,
+    source_dir: Path,
+    document_paths: list[Path],
+) -> None:
+    filename = safe_upload_filename(upload.filename)
+    mime_type = resolve_upload_mime_type(upload.content_type, filename)
+    content = await upload.read(MAX_UPLOAD_BYTES + 1)
+
+    if not content:
+        raise DocumentConversionError(f"{filename} ist leer.")
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise DocumentConversionError(f"{filename} ist groesser als 50 MB.")
+
+    if is_zip_upload(filename, mime_type):
+        extract_zip_documents(filename, content, source_dir, document_paths)
+        return
+
+    if not is_supported_pdf_source(filename, mime_type):
+        raise DocumentConversionError(
+            f"{filename} ist kein unterstuetztes Dokumentformat."
+        )
+
+    target_path = unique_document_path(source_dir, filename)
+    target_path.write_bytes(content)
+    document_paths.append(target_path)
+
+
+def extract_zip_documents(
+    filename: str,
+    content: bytes,
+    source_dir: Path,
+    document_paths: list[Path],
+) -> None:
+    try:
+        archive = zipfile.ZipFile(BytesIO(content))
+    except zipfile.BadZipFile as error:
+        raise DocumentConversionError(f"{filename} ist keine gueltige ZIP-Datei.") from error
+
+    found_documents = 0
+    with archive:
+        for member in archive.infolist():
+            if member.is_dir():
+                continue
+
+            member_name = safe_upload_filename(member.filename)
+            member_mime_type = resolve_upload_mime_type(None, member_name)
+            if not is_supported_pdf_source(member_name, member_mime_type):
+                continue
+
+            if len(document_paths) >= MAX_DOCUMENTS_PER_PDF:
+                raise DocumentConversionError(
+                    f"Maximal {MAX_DOCUMENTS_PER_PDF} Dokumente pro Upload."
+                )
+            if member.file_size <= 0:
+                raise DocumentConversionError(f"{member_name} in {filename} ist leer.")
+            if member.file_size > MAX_UPLOAD_BYTES:
+                raise DocumentConversionError(
+                    f"{member_name} in {filename} ist groesser als 50 MB."
+                )
+
+            try:
+                member_content = archive.read(member)
+            except RuntimeError as error:
+                raise DocumentConversionError(
+                    f"{member_name} in {filename} konnte nicht gelesen werden."
+                ) from error
+
+            if len(member_content) > MAX_UPLOAD_BYTES:
+                raise DocumentConversionError(
+                    f"{member_name} in {filename} ist groesser als 50 MB."
+                )
+
+            target_path = unique_document_path(source_dir, member_name)
+            target_path.write_bytes(member_content)
+            document_paths.append(target_path)
+            found_documents += 1
+
+    if found_documents == 0:
+        raise DocumentConversionError(
+            f"{filename} enthaelt keine unterstuetzten Dokumente."
+        )
+
+
+def merge_documents_to_pdf(
+    document_paths: list[Path],
+    converted_dir: Path,
+    output_pdf: Path,
+) -> Path:
+    writer = PdfWriter()
+    page_count = 0
+
+    for index, document_path in enumerate(document_paths, start=1):
+        if document_path.suffix.lower() == ".pdf":
+            pdf_path = document_path
+        else:
+            pdf_path = convert_document_to_pdf(
+                document_path,
+                converted_dir / f"{index:02d}",
+            )
+
+        try:
+            reader = PdfReader(str(pdf_path))
+            for page in reader.pages:
+                writer.add_page(page)
+                page_count += 1
+        except Exception as error:
+            raise DocumentConversionError(
+                f"{document_path.name} konnte nicht als PDF gelesen werden."
+            ) from error
+
+    if page_count == 0:
+        raise DocumentConversionError("Das erzeugte PDF enthaelt keine Seiten.")
+
+    with output_pdf.open("wb") as pdf_file:
+        writer.write(pdf_file)
+    return output_pdf
+
+
+def convert_document_to_pdf(document_path: Path, output_dir: Path) -> Path:
+    soffice = shutil.which("soffice") or shutil.which("libreoffice")
+    if not soffice:
+        raise RuntimeError(
+            "LibreOffice ist im Backend nicht installiert; Dokumente koennen nicht in PDF konvertiert werden."
+        )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    profile_dir = output_dir / "lo-profile"
+    profile_dir.mkdir()
+
+    command = [
+        soffice,
+        "--headless",
+        "--invisible",
+        "--nologo",
+        "--nodefault",
+        "--nofirststartwizard",
+        f"-env:UserInstallation={profile_dir.resolve().as_uri()}",
+        "--convert-to",
+        "pdf",
+        "--outdir",
+        str(output_dir),
+        str(document_path),
+    ]
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError(
+            f"PDF-Konvertierung fuer {document_path.name} hat zu lange gedauert."
+        ) from error
+
+    if completed.returncode != 0:
+        details = (completed.stderr or completed.stdout or "").strip()
+        suffix = f": {details}" if details else ""
+        raise RuntimeError(
+            f"PDF-Konvertierung fuer {document_path.name} ist fehlgeschlagen{suffix}"
+        )
+
+    pdf_path = output_dir / f"{document_path.stem}.pdf"
+    if pdf_path.is_file():
+        return pdf_path
+
+    pdf_candidates = list(output_dir.glob("*.pdf"))
+    if len(pdf_candidates) == 1:
+        return pdf_candidates[0]
+
+    raise RuntimeError(
+        f"PDF-Konvertierung fuer {document_path.name} hat keine PDF-Datei erzeugt."
+    )
+
+
+def unique_document_path(directory: Path, filename: str) -> Path:
+    path = Path(safe_upload_filename(filename))
+    suffix = path.suffix.lower()
+    stem = path.stem or "document"
+    candidate = directory / f"{stem}{suffix}"
+    counter = 2
+    while candidate.exists():
+        candidate = directory / f"{stem}-{counter}{suffix}"
+        counter += 1
+    return candidate
+
+
+def is_zip_upload(filename: str, mime_type: str) -> bool:
+    extension = os.path.splitext(filename.lower())[1]
+    return extension == ".zip" or mime_type in ZIP_MIME_TYPES
+
+
+def is_supported_pdf_source(filename: str, mime_type: str) -> bool:
+    extension = os.path.splitext(filename.lower())[1]
+    return (
+        extension in PDF_CONVERSION_EXTENSIONS
+        or mime_type in PDF_CONVERSION_MIME_TYPES
     )
 
 
