@@ -60,9 +60,10 @@ available to the workflow — uploads only work when the session is created with
 self-hosted ChatKit backend, so it is intentionally not set here.
 
 Note: ChatKit's hosted backend enforces its own MIME allow-list for the native
-paperclip. PDFs and images upload there. Word and Excel files use the separate
-`Word/Excel hochladen` button, which uploads through `/api/upload-file` and then
-attaches the returned OpenAI file id to the ChatKit composer.
+paperclip. PDFs and images upload there. Word, Excel, and ZIP files use the
+separate `Word/Excel/ZIP hochladen` button, which uploads through
+`/api/upload-file` and then attaches the returned OpenAI file id to the ChatKit
+composer.
 
 ## Customize
 

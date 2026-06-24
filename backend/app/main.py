@@ -42,6 +42,7 @@ ALLOWED_DOCUMENT_EXTENSIONS = {
     ".xls",
     ".xlsx",
     ".xml",
+    ".zip",
 }
 ALLOWED_DOCUMENT_MIME_TYPES = {
     "application/csv",
@@ -58,6 +59,8 @@ ALLOWED_DOCUMENT_MIME_TYPES = {
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/xml",
+    "application/zip",
+    "application/x-zip-compressed",
     "text/csv",
     "text/html",
     "text/markdown",
@@ -276,7 +279,7 @@ async def upload_file(file: UploadFile = File(...)) -> JSONResponse:
         )
         return respond(
             {
-                "error": "Unsupported document type. Upload PDF, Word, Excel, PowerPoint, OpenDocument, text, HTML, Markdown, CSV, TSV, XML, or JSON files.",
+                "error": "Unsupported document type. Upload PDF, Word, Excel, PowerPoint, OpenDocument, ZIP, text, HTML, Markdown, CSV, TSV, XML, or JSON files.",
             },
             400,
         )

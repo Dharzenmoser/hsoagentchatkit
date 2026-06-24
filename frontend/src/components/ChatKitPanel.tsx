@@ -33,6 +33,8 @@ const DOCUMENT_ACCEPT = {
 
 const OFFICE_ACCEPT = {
   "application/msword": [".doc"],
+  "application/zip": [".zip"],
+  "application/x-zip-compressed": [".zip"],
   "application/vnd.ms-excel": [".xls"],
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
@@ -272,7 +274,7 @@ function normalizeChatKitErrorMessage(message: string) {
     lower.includes("uploaded file type is not allowed") ||
     lower.includes("file type")
   ) {
-    return "Datei-Upload fehlgeschlagen. Nutze fuer Word/Excel den separaten Button; der ChatKit-Paperclip akzeptiert hier nur PDF und Bilder.";
+    return "Datei-Upload fehlgeschlagen. Nutze fuer Word/Excel/ZIP den separaten Button; der ChatKit-Paperclip akzeptiert hier nur PDF und Bilder.";
   }
   if (
     lower.includes("file uploads are disabled") ||
@@ -752,7 +754,7 @@ export function ChatKitPanel() {
 
     const invalidFile = selectedFiles.find((file) => !isAcceptedOfficeFile(file));
     if (invalidFile) {
-      const message = `${invalidFile.name} ist kein unterstuetztes Word- oder Excel-Format.`;
+      const message = `${invalidFile.name} ist kein unterstuetztes Word-, Excel- oder ZIP-Format.`;
       setOfficeUpload({ status: "error", detail: message });
       appendEvent("Office upload", message, "error");
       return;
@@ -784,7 +786,7 @@ export function ChatKitPanel() {
       setOfficeUpload({ status: "attached", detail: message });
       appendEvent("Office attached", message, "ok");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Office-Datei konnte nicht hochgeladen werden.";
+      const message = error instanceof Error ? error.message : "Office-/ZIP-Datei konnte nicht hochgeladen werden.";
       setOfficeUpload({ status: "error", detail: message });
       setAgentError(message);
       appendEvent("Office upload", message, "error");
@@ -813,7 +815,7 @@ export function ChatKitPanel() {
           onClick={() => officeInputRef.current?.click()}
           className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
         >
-          {officeUpload.status === "uploading" ? "Upload laeuft..." : "Word/Excel hochladen"}
+          {officeUpload.status === "uploading" ? "Upload laeuft..." : "Word/Excel/ZIP hochladen"}
         </button>
         {officeUpload.detail && (
           <span
